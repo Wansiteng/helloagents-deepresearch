@@ -1,4 +1,11 @@
-"""Task summarization utilities."""
+"""Summarizer Agent — 专精网页阅读与信息浓缩的单一职责 Agent。
+
+该 Agent 接收搜索结果上下文，为单个研究子任务提炼关键发现，
+支持同步调用和流式（逐 token）输出两种模式。
+输出结果供 WriterAgent 汇总为最终报告。
+
+**单一职责**：仅负责网页内容阅读与信息浓缩，不执行搜索或规划。
+"""
 
 from __future__ import annotations
 
@@ -14,8 +21,27 @@ from services.notes import build_note_guidance
 from services.text_processing import strip_tool_calls
 
 
-class SummarizationService:
-    """Handles synchronous and streaming task summarization."""
+class SummarizerAgent:
+    """Summarizer Agent：对搜索结果进行网页阅读与信息浓缩。
+
+    工具依赖
+    --------
+    - ``note``（可选）：读取 PlannerAgent 创建的任务笔记，并写回摘要结果，
+      实现跨 Agent 的进度共享。
+
+    使用方式
+    --------
+    同步模式::
+
+        summary = summarizer.summarize_task(state, task, context)
+
+    流式模式（SSE）::
+
+        stream_gen, get_full = summarizer.stream_task_summary(state, task, context)
+        for chunk in stream_gen:
+            yield chunk  # 逐 token 推送给前端
+        full_text = get_full()  # 获取完整摘要文本
+    """
 
     def __init__(
         self,
@@ -111,8 +137,12 @@ class SummarizationService:
 
         return generator(), get_summary
 
+    # ------------------------------------------------------------------
+    # 内部辅助
+    # ------------------------------------------------------------------
+
     def _build_prompt(self, state: SummaryState, task: TodoItem, context: str) -> str:
-        """Construct the summarization prompt shared by both modes."""
+        """构造 Summarizer Agent 的完整用户提示（同步/流式共用）。"""
 
         return (
             f"任务主题：{state.research_topic}\n"
@@ -123,3 +153,8 @@ class SummarizationService:
             f"{build_note_guidance(task)}\n"
             "请按照以上协作要求先同步笔记，然后返回一份面向用户的 Markdown 总结（仍遵循任务总结模板）。"
         )
+
+
+# ── 向后兼容别名 ────────────────────────────────────────────────────────────
+#: ``SummarizationService`` 已重命名为 ``SummarizerAgent``；此别名保持导入向后兼容。
+SummarizationService = SummarizerAgent

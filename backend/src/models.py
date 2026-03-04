@@ -2,9 +2,62 @@
 
 import operator
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import List, Optional
 
 from typing_extensions import Annotated
+
+
+class SSEEventType(str, Enum):
+    """SSE 事件类型枚举。
+
+    后端通过 ``/research/stream`` 推送的所有事件均使用此枚举中的 ``type`` 字段，
+    前端可据此分发处理逻辑，避免魔法字符串散落在各处。
+
+    事件流顺序（典型）
+    ------------------
+    1. :attr:`STATUS` — 初始化提示
+    2. :attr:`TODO_LIST` — 规划 Agent 生成的任务列表
+    3. :attr:`TASK_STATUS` (``in_progress``) — 单任务开始执行
+    4. :attr:`TOOL_CALL` — Agent 调用工具（笔记读写等）
+    5. :attr:`SOURCES` — 搜索结果汇总
+    6. :attr:`TASK_SUMMARY_CHUNK` — 摘要 Agent 逐 token 流式输出
+    7. :attr:`TASK_STATUS` (``completed`` / ``skipped`` / ``failed``) — 单任务结束
+    8. :attr:`REPORT_NOTE` — 报告写入笔记
+    9. :attr:`FINAL_REPORT` — Writer Agent 生成最终报告
+    10. :attr:`DONE` — 流结束信号
+    11. :attr:`ERROR` — 异常（任意阶段）
+    """
+
+    STATUS = "status"
+    """全局状态提示，如"初始化研究流程"。"""
+
+    TODO_LIST = "todo_list"
+    """Planner Agent 输出的任务列表（含 id / title / intent / query）。"""
+
+    TASK_STATUS = "task_status"
+    """单任务状态变更：``in_progress`` / ``completed`` / ``skipped`` / ``failed``。"""
+
+    SOURCES = "sources"
+    """搜索引擎返回的来源列表摘要，附带原始上下文。"""
+
+    TASK_SUMMARY_CHUNK = "task_summary_chunk"
+    """Summarizer Agent 流式输出的摘要文本片段（逐 token）。"""
+
+    TOOL_CALL = "tool_call"
+    """Agent 调用工具的详情（工具名、参数、返回值）。"""
+
+    REPORT_NOTE = "report_note"
+    """最终报告写入笔记工具的确认事件。"""
+
+    FINAL_REPORT = "final_report"
+    """Writer Agent 生成的完整 Markdown 研究报告。"""
+
+    DONE = "done"
+    """流式传输结束信号，前端收到后可关闭 SSE 连接。"""
+
+    ERROR = "error"
+    """任意阶段发生异常时推送的错误事件。"""
 
 
 @dataclass(kw_only=True)

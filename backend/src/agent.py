@@ -11,7 +11,8 @@ from typing import Any, Callable, Iterator
 
 from hello_agents import HelloAgentsLLM, ToolAwareSimpleAgent
 from hello_agents.tools import ToolRegistry
-from hello_agents.tools.builtin.note_tool import NoteTool
+
+from agents.robust_agent import RobustToolAwareAgent
 
 from config import Configuration
 from prompts import (
@@ -20,33 +21,44 @@ from prompts import (
     todo_planner_system_prompt,
 )
 from models import SummaryState, SummaryStateOutput, TodoItem
-from services.planner import PlanningService
-from services.reporter import ReportingService
+from services.planner import PlannerAgent
+from services.reporter import WriterAgent
 from services.search import dispatch_search, prepare_research_context
-from services.summarizer import SummarizationService
+from services.summarizer import SummarizerAgent
 from services.tool_events import ToolCallTracker
+from tool_registry import AgentToolRegistry
 
 logger = logging.getLogger(__name__)
 
 
 class DeepResearchAgent:
-    """Coordinator orchestrating TODO-based research workflow using HelloAgents."""
+    """Coordinator orchestrating TODO-based research workflow using HelloAgents.
+
+    架构概览
+    --------
+    本 Orchestrator 将深度研究流程解耦为三个单一职责 Agent：
+
+    - :class:`~services.planner.PlannerAgent` — 意图理解与任务拆解
+    - :class:`~services.summarizer.SummarizerAgent` — 网页阅读与信息浓缩
+    - :class:`~services.reporter.WriterAgent` — 逻辑组织与长文生成
+
+    三个 Agent 共享同一个 :class:`~tool_registry.AgentToolRegistry` 实例，
+    通过统一接口声明和调用工具（笔记、搜索等），便于后续扩展。
+
+    SSE 流式机制
+    -----------
+    调用 :meth:`run_stream` 时，各 Agent 在执行规划、搜索、总结等节点时，
+    通过 :class:`~services.tool_events.ToolCallTracker` 将状态与中间结果实时推送，
+    前端通过 ``/research/stream`` SSE 端点接收，避免长链接超时。
+    """
 
     def __init__(self, config: Configuration | None = None) -> None:
         """Initialise the coordinator with configuration and shared tools."""
         self.config = config or Configuration.from_env()
         self.llm = self._init_llm()
 
-        self.note_tool = (
-            NoteTool(workspace=self.config.notes_workspace)
-            if self.config.enable_notes
-            else None
-        )
-        self.tools_registry: ToolRegistry | None = None
-        if self.note_tool:
-            registry = ToolRegistry()
-            registry.register_tool(self.note_tool)
-            self.tools_registry = registry
+        # ── 统一工具注册表：替代分散的工具初始化代码 ───────────────────
+        self.tool_registry = AgentToolRegistry(self.config)
 
         self._tool_tracker = ToolCallTracker(
             self.config.notes_workspace if self.config.enable_notes else None
@@ -56,23 +68,27 @@ class DeepResearchAgent:
         # 本地 LLM（Ollama）同时只能处理一个请求，用信号量串行化任务执行
         self._llm_semaphore = Semaphore(1)
 
-        self.todo_agent = self._create_tool_aware_agent(
+        # ── 三个专职 Agent（共享 tool_registry）───────────────────────
+        planner_agent = self._create_tool_aware_agent(
             name="研究规划专家",
             system_prompt=todo_planner_system_prompt.strip(),
         )
-        self.report_agent = self._create_tool_aware_agent(
+        writer_agent = self._create_tool_aware_agent(
             name="报告撰写专家",
             system_prompt=report_writer_instructions.strip(),
         )
-
-        self._summarizer_factory: Callable[[], ToolAwareSimpleAgent] = lambda: self._create_tool_aware_agent(  # noqa: E501
-            name="任务总结专家",
-            system_prompt=task_summarizer_instructions.strip(),
+        summarizer_factory: Callable[[], ToolAwareSimpleAgent] = (
+            lambda: self._create_tool_aware_agent(
+                name="任务总结专家",
+                system_prompt=task_summarizer_instructions.strip(),
+            )
         )
 
-        self.planner = PlanningService(self.todo_agent, self.config)
-        self.summarizer = SummarizationService(self._summarizer_factory, self.config)
-        self.reporting = ReportingService(self.report_agent, self.config)
+        self.planner = PlannerAgent(planner_agent, self.config)
+        self.summarizer = SummarizerAgent(summarizer_factory, self.config)
+        self.writer = WriterAgent(writer_agent, self.config)
+        # 向后兼容：旧代码可能通过 self.reporting 访问
+        self.reporting = self.writer
         self._last_search_notices: list[str] = []
 
     # ------------------------------------------------------------------
@@ -80,7 +96,10 @@ class DeepResearchAgent:
     # ------------------------------------------------------------------
     def _init_llm(self) -> HelloAgentsLLM:
         """Instantiate HelloAgentsLLM following configuration preferences."""
-        llm_kwargs: dict[str, Any] = {"temperature": 0.0}
+        llm_kwargs: dict[str, Any] = {
+            "temperature": 0.0,
+            "timeout": self.config.llm_timeout,
+        }
 
         model_id = self.config.llm_model_id or self.config.local_llm
         if model_id:
@@ -109,13 +128,19 @@ class DeepResearchAgent:
         return HelloAgentsLLM(**llm_kwargs)
 
     def _create_tool_aware_agent(self, *, name: str, system_prompt: str) -> ToolAwareSimpleAgent:
-        """Instantiate a ToolAwareSimpleAgent sharing tool registry and tracker."""
-        return ToolAwareSimpleAgent(
+        """Instantiate a RobustToolAwareAgent sharing the unified tool registry.
+
+        使用 :class:`~agents.robust_agent.RobustToolAwareAgent` 替代默认的
+        ``ToolAwareSimpleAgent``，在 LLM 生成的 JSON 参数不合法时（如 content
+        字段含未转义引号），通过 JSON 修复与正则兜底提取保证工具调用不失败。
+        """
+        ha_registry = self.tool_registry.hello_agents_registry
+        return RobustToolAwareAgent(
             name=name,
             llm=self.llm,
             system_prompt=system_prompt,
-            enable_tool_calling=self.tools_registry is not None,
-            tool_registry=self.tools_registry,
+            enable_tool_calling=ha_registry is not None,
+            tool_registry=ha_registry,
             tool_call_listener=self._tool_tracker.record,
         )
 
@@ -137,7 +162,7 @@ class DeepResearchAgent:
         for task in state.todo_items:
             self._execute_task(state, task, emit_stream=False)
 
-        report = self.reporting.generate_report(state)
+        report = self.writer.generate_report(state)
         self._drain_tool_events(state)
         state.structured_report = report
         state.running_summary = report
@@ -268,7 +293,7 @@ class DeepResearchAgent:
             for thread in threads:
                 thread.join()
 
-        report = self.reporting.generate_report(state)
+        report = self.writer.generate_report(state)
         final_step = len(state.todo_items) + 1
         for event in self._drain_tool_events(state, step=final_step):
             yield event
@@ -449,7 +474,8 @@ class DeepResearchAgent:
         }
 
     def _persist_final_report(self, state: SummaryState, report: str) -> dict[str, Any] | None:
-        if not self.note_tool or not report or not report.strip():
+        note_tool = self.tool_registry.note_tool
+        if not note_tool or not report or not report.strip():
             return None
 
         note_title = f"研究报告：{state.research_topic}".strip() or "研究报告"
@@ -460,7 +486,7 @@ class DeepResearchAgent:
         response = ""
 
         if note_id:
-            response = self.note_tool.run(
+            response = note_tool.run(
                 {
                     "action": "update",
                     "note_id": note_id,
@@ -474,7 +500,7 @@ class DeepResearchAgent:
                 note_id = None
 
         if not note_id:
-            response = self.note_tool.run(
+            response = note_tool.run(
                 {
                     "action": "create",
                     "title": note_title,

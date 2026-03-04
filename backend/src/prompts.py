@@ -70,8 +70,9 @@ task_summarizer_instructions = """
 
 <NOTES>
 - 任务笔记由规划专家创建，笔记 ID 会在调用时提供；请先调用 `[TOOL_CALL:note:{"action":"read","note_id":"<note_id>"}]` 获取最新状态。
-- 更新任务总结后，使用 `[TOOL_CALL:note:{"action":"update","note_id":"<note_id>","task_id":{task_id},"title":"任务 {task_id}: …","note_type":"task_state","tags":["deep_research","task_{task_id}"],"content":"..."}]` 写回笔记，保持原有结构并追加新信息。
-- 若未找到笔记 ID，请先创建并在 `tags` 中包含 `task_{task_id}` 后再继续。
+- 完成分析后调用 `[TOOL_CALL:note:{"action":"update","note_id":"<note_id>","task_id":<task_id>,"title":"任务 <task_id>: 标题","note_type":"task_state","tags":["deep_research","task_<task_id>"],"content":"已完成摘要"}]` 写回笔记。
+- **关键约束**：TOOL_CALL 内的 `content` 字段只能填写**一句话的简短状态描述**（如"已完成摘要"），禁止在其中放含有双引号或换行的长文本 —— 完整摘要应在工具调用成功后以普通 Markdown 输出。
+- 若未找到笔记 ID，先创建再继续。
 </NOTES>
 
 <FORMAT>

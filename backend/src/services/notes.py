@@ -32,10 +32,10 @@ def build_note_guidance(task: TodoItem) -> str:
             "笔记协作指引：\n"
             f"- 当前任务笔记 ID：{task.note_id}。\n"
             f"- 在书写总结前必须调用：[TOOL_CALL:note:{read_payload}] 获取最新内容。\n"
-            f"- 完成分析后调用：[TOOL_CALL:note:{update_payload}] 同步增量信息。\n"
-            "- 更新时保持原有段落结构，新增内容请在对应段落中补充。\n"
-            f"- 建议 tags 保持为 {tags_literal}，保证其他 Agent 可快速定位。\n"
-            "- 成功同步到笔记后，再输出面向用户的总结。\n"
+            f"- 完成分析后调用以下指令同步状态（content 仅填写一句话的状态描述，"
+            f"禁止在 content 中放完整摘要或含有引号的长文本，以免破坏 JSON 格式）：\n"
+            f"  [TOOL_CALL:note:{update_payload}]\n"
+            "- 成功同步到笔记后，再在工具调用之外输出面向用户的完整 Markdown 总结。\n"
         )
 
     create_payload = json.dumps(
@@ -52,8 +52,9 @@ def build_note_guidance(task: TodoItem) -> str:
 
     return (
         "笔记协作指引：\n"
-        f"- 当前任务尚未建立笔记，请先调用：[TOOL_CALL:note:{create_payload}]。\n"
+        f"- 当前任务尚未建立笔记，请先调用以下指令创建（content 只填写简短的一句话状态描述）：\n"
+        f"  [TOOL_CALL:note:{create_payload}]\n"
         "- 创建成功后记录返回的 note_id，并在后续所有更新中复用。\n"
-        "- 同步笔记后，再输出面向用户的总结。\n"
+        "- 同步笔记后，再在工具调用之外输出面向用户的完整 Markdown 总结。\n"
     )
 

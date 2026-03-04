@@ -17,8 +17,10 @@ env/
 .env
 !.env.example
 
-# 运行时生成的笔记文件
+# 运行时生成的笔记文件（NOTES_WORKSPACE 配置的任意路径）
 backend/src/notes/
+notes/
+notes_index.json
 
 # Node.js
 node_modules/

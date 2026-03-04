@@ -128,7 +128,7 @@ npm run dev
 
 本项目直接源自 **[Wansiteng/hello-agents](https://github.com/Wansiteng/hello-agents)** 教程仓库中第十四章的示例代码（`code/chapter14/helloagents-deepresearch`）。
 
-该课程由 **万思腾（Wansiteng）** 创作，是 HelloAgents 智能体开发教程系列的一部分，系统介绍了如何使用 `hello-agents` 框架构建多 Agent 应用。
+该课程是 HelloAgents 智能体开发教程系列的一部分，系统介绍了如何使用 `hello-agents` 框架构建多 Agent 应用。
 
 特此致谢原作者的开源贡献。
 
@@ -140,7 +140,18 @@ npm run dev
 
 2. **修复并发 LLM 超时导致任务失败**：原代码对所有子任务同时开启独立线程并发调用 LLM，本地 Ollama 仅支持单请求处理，导致排队超时后任务全部标记为 failed。已引入 `threading.Semaphore(1)` 对 LLM 调用串行化。
 
-3. **代理支持**：补充了 `HTTP_PROXY` / `HTTPS_PROXY` / `NO_PROXY` 环境变量的说明与配置，确保国内网络环境下搜索服务可正常使用。
+3. **修复 note 工具调用验证失败**：LLM 生成 `[TOOL_CALL:note:{...}]` 时，会把含有未转义双引号或换行的摘要文本写入 `content` 字段，导致 `json.loads` 抛出 `JSONDecodeError` → `action` 字段丢失 → `NoteTool.validate_parameters` 返回 `False` → 工具返回"参数验证失败"，LLM 随即输出"由于工具调用验证失败，本次总结基于上下文直接生成"的免责声明，并跳过笔记同步。
+
+   **修复内容：**
+
+   - 新增 `backend/src/agents/robust_agent.py`，实现 `RobustToolAwareAgent`（继承自 `ToolAwareSimpleAgent`）：
+     - 覆盖 `_parse_tool_parameters`，在标准 `json.loads` 失败后依次执行：
+       1. **JSON 截断修复**：找到最后一个合法闭合的 `}` 截断后重新解析；
+       2. **正则逐字段提取**：确保 `action`、`note_id`、`task_id`、`title`、`note_type`、`tags` 等关键字段不因 `content` 破坏而全部丢失；
+     - 覆盖 `_execute_tool_call`，工具调用失败时记录完整的原始参数日志，便于排查。
+   - `DeepResearchAgent._create_tool_aware_agent` 改为实例化 `RobustToolAwareAgent`，规划、摘要、报告三个子 Agent 全部使用容错解析。
+   - 优化 `backend/src/services/notes.py` 笔记工具调用引导语：明确要求 LLM 在 `TOOL_CALL` 的 `content` 字段只填写**一句话简短状态描述**，完整摘要须在工具调用成功后以普通 Markdown 输出，从源头降低 JSON 格式破坏概率。
+   - 修正 `backend/src/prompts.py` 中 `task_summarizer_instructions` 的 update 示例：去掉未替换的 `{task_id}` 格式化占位符，并加入同样的 `content` 约束说明。
 
 ### 许可证
 

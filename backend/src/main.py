@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 
 from config import Configuration, SearchAPI
 from agent import DeepResearchAgent
+from models import SSEEventType
 
 # 添加控制台日志处理程序
 logger.add(
@@ -93,6 +94,7 @@ def create_app() -> FastAPI:
 
     @app.on_event("startup")
     def log_startup_configuration() -> None:
+        from tool_registry import AgentToolRegistry
         config = Configuration.from_env()
 
         if config.llm_provider == "ollama":
@@ -102,9 +104,13 @@ def create_app() -> FastAPI:
         else:
             base_url = config.llm_base_url or "unset"
 
+        registry = AgentToolRegistry(config)
+        registered_tools = registry.list_tools() or ["（无工具）"]
+
         logger.info(
-            "DeepResearch configuration loaded: provider=%s model=%s base_url=%s search_api=%s "
-            "max_loops=%s fetch_full_page=%s tool_calling=%s strip_thinking=%s api_key=%s",
+            "DeepResearch configuration loaded: provider={} model={} base_url={} search_api={} "
+            "max_loops={} fetch_full_page={} tool_calling={} strip_thinking={} api_key={} "
+            "llm_timeout={}s registered_tools={}",
             config.llm_provider,
             config.resolved_model() or "unset",
             base_url,
@@ -114,6 +120,8 @@ def create_app() -> FastAPI:
             config.use_tool_calling,
             config.strip_thinking_tokens,
             _mask_secret(config.llm_api_key),
+            config.llm_timeout,
+            registered_tools,
         )
 
     @app.get("/healthz")
@@ -153,6 +161,20 @@ def create_app() -> FastAPI:
 
     @app.post("/research/stream")
     def stream_research(payload: ResearchRequest) -> StreamingResponse:
+        """SSE 流式研究接口。
+
+        推送事件类型请参见 :class:`~models.SSEEventType`：
+
+        - ``status`` — 全局状态提示
+        - ``todo_list`` — Planner Agent 输出的任务列表
+        - ``task_status`` — 单任务状态变更
+        - ``sources`` — 搜索来源摘要
+        - ``task_summary_chunk`` — Summarizer Agent 流式摘要片段
+        - ``tool_call`` — Agent 工具调用详情
+        - ``final_report`` — Writer Agent 最终报告
+        - ``done`` — 流结束信号
+        - ``error`` — 异常事件
+        """
         try:
             config = _build_config(payload)
             agent = DeepResearchAgent(config=config)
@@ -163,9 +185,11 @@ def create_app() -> FastAPI:
             try:
                 for event in agent.run_stream(payload.topic):
                     yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+                    if event.get("type") in {SSEEventType.ERROR, SSEEventType.DONE}:
+                        return
             except Exception as exc:  # pragma: no cover - defensive guardrail
                 logger.exception("Streaming research failed")
-                error_payload = {"type": "error", "detail": str(exc)}
+                error_payload = {"type": SSEEventType.ERROR, "detail": str(exc)}
                 yield f"data: {json.dumps(error_payload, ensure_ascii=False)}\n\n"
 
         return StreamingResponse(

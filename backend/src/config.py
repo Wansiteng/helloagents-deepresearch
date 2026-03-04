@@ -86,6 +86,11 @@ class Configuration(BaseModel):
         title="LLM Model ID",
         description="Optional model identifier for custom OpenAI-compatible services",
     )
+    llm_timeout: int = Field(
+        default=600,
+        title="LLM Timeout",
+        description="LLM request timeout in seconds (default 600). Local models like Ollama may need 5-10 min.",
+    )
 
     @classmethod
     def from_env(cls, overrides: Optional[dict[str, Any]] = None) -> "Configuration":
@@ -115,6 +120,7 @@ class Configuration(BaseModel):
             "search_api": os.getenv("SEARCH_API"),
             "enable_notes": os.getenv("ENABLE_NOTES"),
             "notes_workspace": os.getenv("NOTES_WORKSPACE"),
+            "llm_timeout": os.getenv("LLM_TIMEOUT"),
         }
 
         for key, value in env_aliases.items():
