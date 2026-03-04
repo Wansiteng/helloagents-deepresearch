@@ -73,14 +73,6 @@ OLLAMA_BASE_URL=http://localhost:11434
 SEARCH_API=duckduckgo
 ```
 
-如需使用代理（如 Clash），追加：
-
-```dotenv
-HTTP_PROXY=http://127.0.0.1:7897
-HTTPS_PROXY=http://127.0.0.1:7897
-NO_PROXY=localhost,127.0.0.1
-```
-
 ### 3. 启动后端
 
 ```bash
