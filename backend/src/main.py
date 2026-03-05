@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 from config import Configuration, SearchAPI
 from agent import DeepResearchAgent
 from models import SSEEventType
+from routers_history import router as history_router
 
 # 添加控制台日志处理程序
 logger.add(
@@ -92,6 +93,8 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    app.include_router(history_router)
+
     @app.on_event("startup")
     def log_startup_configuration() -> None:
         from tool_registry import AgentToolRegistry
@@ -110,7 +113,7 @@ def create_app() -> FastAPI:
         logger.info(
             "DeepResearch configuration loaded: provider={} model={} base_url={} search_api={} "
             "max_loops={} fetch_full_page={} tool_calling={} strip_thinking={} api_key={} "
-            "llm_timeout={}s registered_tools={}",
+            "llm_timeout={}s registered_tools={} vector_store={}",
             config.llm_provider,
             config.resolved_model() or "unset",
             base_url,
@@ -122,9 +125,10 @@ def create_app() -> FastAPI:
             _mask_secret(config.llm_api_key),
             config.llm_timeout,
             registered_tools,
+            f"{config.vector_store_path} (model={config.embedding_model})" if config.use_vector_store else "禁用",
         )
 
-    @app.get("/healthz")
+    @app.get("/health")
     def health_check() -> Dict[str, str]:
         return {"status": "ok"}
 

@@ -11,6 +11,14 @@ export interface ResearchStreamEvent {
   [key: string]: unknown;
 }
 
+export interface HistoryNote {
+  id: string;
+  title: string;
+  type: string;
+  tags: string[];
+  created_at: string;
+}
+
 export interface StreamOptions {
   signal?: AbortSignal;
 }
@@ -93,4 +101,24 @@ export async function runResearchStream(
       break;
     }
   }
+}
+
+export async function getHistory(): Promise<{ notes: HistoryNote[] }> {
+  const response = await fetch(`${baseURL}/history`, {
+    method: "GET",
+  });
+  if (!response.ok) {
+    throw new Error(`获取历史记录失败，状态码：${response.status}`);
+  }
+  return response.json();
+}
+
+export async function getHistoryDetail(noteId: string): Promise<{ id: string; content: string }> {
+  const response = await fetch(`${baseURL}/history/${noteId}`, {
+    method: "GET",
+  });
+  if (!response.ok) {
+    throw new Error(`获取历史记录详情失败，状态码：${response.status}`);
+  }
+  return response.json();
 }

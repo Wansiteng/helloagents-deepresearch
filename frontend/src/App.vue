@@ -6,6 +6,15 @@
       <span></span>
     </div>
 
+    <button class="history-toggle-btn" @click="isHistoryOpen = true">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+        <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      历史记录
+    </button>
+
+    <HistoryModal :isOpen="isHistoryOpen" @close="isHistoryOpen = false" />
+
     <!-- 初始状态：居中输入卡片 -->
     <div v-if="!isExpanded" class="layout layout-centered">
       <section class="panel panel-form panel-centered">
@@ -337,11 +346,14 @@
 
 <script lang="ts" setup>
 import { computed, onBeforeUnmount, reactive, ref } from "vue";
+import HistoryModal from "./components/HistoryModal.vue";
 
 import {
   runResearchStream,
   type ResearchStreamEvent
 } from "./services/api";
+
+const isHistoryOpen = ref(false);
 
 interface SourceItem {
   title: string;
@@ -2300,5 +2312,38 @@ select:focus {
   .layout-fullscreen .panel-result {
     height: 60vh;
   }
+}
+
+.history-toggle-btn {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-normal);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.expanded .history-toggle-btn {
+  /* 当全屏幕布局展开时，移动到左侧侧边栏上方，不与右侧的“收起/展开流程”重叠 */
+  top: 16px;
+  right: auto;
+  left: 24px;
+}
+
+.history-toggle-btn:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  transform: translateY(-1px);
 }
 </style>

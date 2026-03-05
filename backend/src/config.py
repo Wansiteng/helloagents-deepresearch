@@ -91,6 +91,53 @@ class Configuration(BaseModel):
         title="LLM Timeout",
         description="LLM request timeout in seconds (default 600). Local models like Ollama may need 5-10 min.",
     )
+    use_vector_store: bool = Field(
+        default=False,
+        title="Use Vector Store",
+        description="Enable RAG-based long-context memory via local ChromaDB vector store",
+    )
+    vector_store_path: str = Field(
+        default="./vector_store",
+        title="Vector Store Path",
+        description="Directory for ChromaDB persistent storage",
+    )
+    embedding_model: str = Field(
+        default="nomic-embed-text",
+        title="Embedding Model",
+        description="Ollama embedding model name for vector store (e.g. nomic-embed-text)",
+    )
+    vector_chunk_size: int = Field(
+        default=500,
+        title="Vector Chunk Size",
+        description="Max tokens per chunk for sliding-window text splitting",
+    )
+    vector_chunk_overlap: int = Field(
+        default=50,
+        title="Vector Chunk Overlap",
+        description="Overlap tokens between adjacent chunks",
+    )
+    vector_top_k: int = Field(
+        default=5,
+        title="Vector Top K",
+        description="Number of top similar chunks to retrieve from vector store",
+    )
+    use_open_source_mode: bool = Field(
+        default=False,
+        title="Use Open-Source Model Mode",
+        description=(
+            "Enable strict-constraint prompt engineering and self-correction retry "
+            "loop optimized for local open-source models (e.g. Qwen, Llama) that "
+            "have weaker instruction-following capabilities than frontier APIs."
+        ),
+    )
+    open_source_model_max_retries: int = Field(
+        default=2,
+        title="Open-Source Model Self-Correction Max Retries",
+        description=(
+            "Maximum number of self-correction retry attempts when a tool call "
+            "fails to produce valid JSON in open-source model mode."
+        ),
+    )
 
     @classmethod
     def from_env(cls, overrides: Optional[dict[str, Any]] = None) -> "Configuration":
@@ -121,6 +168,14 @@ class Configuration(BaseModel):
             "enable_notes": os.getenv("ENABLE_NOTES"),
             "notes_workspace": os.getenv("NOTES_WORKSPACE"),
             "llm_timeout": os.getenv("LLM_TIMEOUT"),
+            "use_vector_store": os.getenv("USE_VECTOR_STORE"),
+            "vector_store_path": os.getenv("VECTOR_STORE_PATH"),
+            "embedding_model": os.getenv("EMBEDDING_MODEL"),
+            "vector_chunk_size": os.getenv("VECTOR_CHUNK_SIZE"),
+            "vector_chunk_overlap": os.getenv("VECTOR_CHUNK_OVERLAP"),
+            "vector_top_k": os.getenv("VECTOR_TOP_K"),
+            "use_open_source_mode": os.getenv("USE_OPEN_SOURCE_MODE"),
+            "open_source_model_max_retries": os.getenv("OPEN_SOURCE_MODEL_MAX_RETRIES"),
         }
 
         for key, value in env_aliases.items():

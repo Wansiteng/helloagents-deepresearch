@@ -18,6 +18,7 @@ dependencies = [
     "uvicorn[standard]>=0.32.0",
     "ddgs>=9.6.1",
     "loguru>=0.7.3",
+    "chromadb>=0.6.0",
 ]
 
 [project.optional-dependencies]

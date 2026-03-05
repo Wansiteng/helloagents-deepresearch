@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 from queue import Empty, Queue
 from threading import Lock, Semaphore, Thread
-from typing import Any, Callable, Iterator
+from typing import Any, Callable, Iterator, Optional
 
 from hello_agents import HelloAgentsLLM, ToolAwareSimpleAgent
 from hello_agents.tools import ToolRegistry
@@ -16,6 +16,7 @@ from agents.robust_agent import RobustToolAwareAgent
 
 from config import Configuration
 from prompts import (
+    open_source_model_constraint_prompt,
     report_writer_instructions,
     task_summarizer_instructions,
     todo_planner_system_prompt,
@@ -26,6 +27,7 @@ from services.reporter import WriterAgent
 from services.search import dispatch_search, prepare_research_context
 from services.summarizer import SummarizerAgent
 from services.tool_events import ToolCallTracker
+from services.vector_store import VectorStore
 from tool_registry import AgentToolRegistry
 
 logger = logging.getLogger(__name__)
@@ -60,6 +62,26 @@ class DeepResearchAgent:
         # ── 统一工具注册表：替代分散的工具初始化代码 ───────────────────
         self.tool_registry = AgentToolRegistry(self.config)
 
+        # ── RAG 向量记忆层（可选）──────────────────────────────────────
+        self.vector_store: Optional[VectorStore] = None
+        if self.config.use_vector_store:
+            try:
+                self.vector_store = VectorStore(
+                    workspace=self.config.vector_store_path,
+                    embedding_model=self.config.embedding_model,
+                    ollama_base_url=self.config.ollama_base_url,
+                    chunk_size=self.config.vector_chunk_size,
+                    chunk_overlap=self.config.vector_chunk_overlap,
+                )
+                logger.info(
+                    "VectorStore 已启用: path=%s model=%s",
+                    self.config.vector_store_path,
+                    self.config.embedding_model,
+                )
+            except Exception as exc:
+                logger.warning("VectorStore 初始化失败，将禁用向量记忆: %s", exc)
+                self.vector_store = None
+
         self._tool_tracker = ToolCallTracker(
             self.config.notes_workspace if self.config.enable_notes else None
         )
@@ -86,7 +108,7 @@ class DeepResearchAgent:
 
         self.planner = PlannerAgent(planner_agent, self.config)
         self.summarizer = SummarizerAgent(summarizer_factory, self.config)
-        self.writer = WriterAgent(writer_agent, self.config)
+        self.writer = WriterAgent(writer_agent, self.config, vector_store=self.vector_store)
         # 向后兼容：旧代码可能通过 self.reporting 访问
         self.reporting = self.writer
         self._last_search_notices: list[str] = []
@@ -133,15 +155,35 @@ class DeepResearchAgent:
         使用 :class:`~agents.robust_agent.RobustToolAwareAgent` 替代默认的
         ``ToolAwareSimpleAgent``，在 LLM 生成的 JSON 参数不合法时（如 content
         字段含未转义引号），通过 JSON 修复与正则兜底提取保证工具调用不失败。
+
+        当 ``config.use_open_source_mode`` 为 True 时（针对 Qwen/Llama 等本地模型），
+        会自动在 System Prompt 末尾追加强约束格式规则与 Few-Shot 示例；同时启用
+        自我纠错重试闭环，最大重试次数由 ``config.open_source_model_max_retries`` 控制。
         """
         ha_registry = self.tool_registry.hello_agents_registry
+
+        # ── 开源模型强约束 Prompt 补丁 ──────────────────────────────────
+        effective_prompt = system_prompt
+        if self.config.use_open_source_mode:
+            effective_prompt = system_prompt + "\n" + open_source_model_constraint_prompt
+            logger.debug(
+                "open_source_mode: injecting constraint prompt for agent '%s'", name
+            )
+
+        max_retries = (
+            self.config.open_source_model_max_retries
+            if self.config.use_open_source_mode
+            else 0
+        )
+
         return RobustToolAwareAgent(
             name=name,
             llm=self.llm,
-            system_prompt=system_prompt,
+            system_prompt=effective_prompt,
             enable_tool_calling=ha_registry is not None,
             tool_registry=ha_registry,
             tool_call_listener=self._tool_tracker.record,
+            self_correction_max_retries=max_retries,
         )
 
     def _set_tool_event_sink(self, sink: Callable[[dict[str, Any]], None] | None) -> None:
@@ -378,6 +420,32 @@ class DeepResearchAgent:
             self.config,
         )
 
+        # ── RAG 检索：从向量库取回历史相关研究补充上下文 ─────────────────
+        if self.vector_store is not None:
+            rag_query = f"{state.research_topic} {task.title} {task.query}"
+            try:
+                rag_hits = self.vector_store.query(
+                    rag_query, n_results=self.config.vector_top_k
+                )
+                if rag_hits:
+                    rag_snippets = "\n\n---\n\n".join(
+                        f"[历史研究片段 {i + 1}]\n{hit['text']}"
+                        for i, hit in enumerate(rag_hits)
+                    )
+                    context = (
+                        f"## 向量记忆库检索结果（历史相关研究）\n\n"
+                        f"{rag_snippets}\n\n"
+                        f"---\n\n"
+                        f"## 本轮搜索结果\n\n{context}"
+                    )
+                    logger.info(
+                        "RAG 检索: task_id=%s 命中 %d 条历史片段",
+                        task.id,
+                        len(rag_hits),
+                    )
+            except Exception as exc:
+                logger.warning("RAG 查询失败，跳过历史记忆增强: %s", exc)
+
         task.sources_summary = sources_summary
 
         with self._state_lock:
@@ -424,6 +492,28 @@ class DeepResearchAgent:
 
         task.summary = summary_text.strip() if summary_text else "暂无可用信息"
         task.status = "completed"
+
+        # ── RAG 写入：将本轮摘要向量化存入记忆库 ─────────────────────────
+        if self.vector_store is not None and task.summary and task.summary != "暂无可用信息":
+            vs_metadata: dict[str, Any] = {
+                "task_id": task.id,
+                "task_title": task.title,
+                "topic": state.research_topic,
+                "query": task.query,
+            }
+            try:
+                n_chunks = self.vector_store.add_document(
+                    text=task.summary,
+                    metadata=vs_metadata,
+                    doc_id=f"task_{task.id}",
+                )
+                logger.info(
+                    "RAG 写入: task_id=%s 写入 %d 个 chunk",
+                    task.id,
+                    n_chunks,
+                )
+            except Exception as exc:
+                logger.warning("RAG 写入失败，摘要未持久化到向量库: %s", exc)
 
         if emit_stream:
             for event in self._drain_tool_events(state, step=step):
@@ -474,6 +564,21 @@ class DeepResearchAgent:
         }
 
     def _persist_final_report(self, state: SummaryState, report: str) -> dict[str, Any] | None:
+        # ── 将最终报告存入向量库 ──────────────────────────────────────────
+        if self.vector_store is not None and report and report.strip():
+            try:
+                n_chunks = self.vector_store.add_document(
+                    text=report.strip(),
+                    metadata={
+                        "type": "final_report",
+                        "topic": state.research_topic,
+                    },
+                    doc_id=f"report_{state.research_topic[:32]}",
+                )
+                logger.info("RAG 写入最终报告: %d 个 chunk", n_chunks)
+            except Exception as exc:
+                logger.warning("最终报告向量化失败: %s", exc)
+
         note_tool = self.tool_registry.note_tool
         if not note_tool or not report or not report.strip():
             return None

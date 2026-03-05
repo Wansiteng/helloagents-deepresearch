@@ -11,11 +11,12 @@
 
 ## 功能特性
 
-- **自动任务分解**：规划 Agent 将研究主题拆解为 3~5 个互补子任务
+- **自动任务分解**：`PlannerAgent` 将研究主题拆解为 3~5 个互补子任务，每个任务携带独立搜索关键词与研究意图
 - **多引擎检索**：支持 DuckDuckGo（免费）、Tavily、Perplexity、SearXNG
-- **多 Agent 流水线**：规划 → 搜索 → 摘要 → 报告，四阶段专家 Agent 协作
-- **实时流式输出**：SSE 推送，每个子任务进度在前端实时展示
-- **笔记持久化**：NoteTool 将中间进度和最终报告保存为本地 Markdown 文件
+- **三 Agent 协作流水线**：`PlannerAgent` → `SummarizerAgent` → `WriterAgent`，各司其职、单一职责
+- **统一工具注册表**：`AgentToolRegistry` 集中管理所有工具，支持链式注册与按需扩展
+- **10 种 SSE 事件推送**：每个子任务进度、摘要片段、最终报告均通过 Server-Sent Events 实时播报
+- **笔记持久化**：`NoteTool` 将中间进度和最终报告保存为本地 Markdown 文件
 - **完全本地运行**：支持 Ollama / LMStudio 等本地 LLM，数据不出本机
 
 ---
@@ -25,19 +26,19 @@
 ```
 用户输入研究主题
         ↓
-  PlanningService（规划 Agent）
+  PlannerAgent（规划 Agent）
     → 拆解为 N 个 TodoItem（含搜索关键词）
         ↓
-  SearchService（并发搜索）
-    → DuckDuckGo / Tavily / Perplexity
+  SearchService（并发搜索）          AgentToolRegistry（工具注册表）
+    → DuckDuckGo / Tavily / Perplexity  ← NoteTool / 可插拔扩展工具
         ↓
-  SummarizationService（摘要 Agent）
-    → 对每个子任务提炼关键信息
+  SummarizerAgent（摘要 Agent）
+    → 对每个子任务流式提炼关键信息（SSE 推送 task_summary_chunk）
         ↓
-  ReportingService（报告 Agent）
+  WriterAgent（报告 Agent）
     → 汇总生成完整 Markdown 研究报告
         ↓
-  前端实时流式展示（Vue 3 + SSE）
+  前端实时流式展示（Vue 3 + SSE，10 种事件类型）
 ```
 
 ---
@@ -144,6 +145,86 @@ npm run dev
    - `DeepResearchAgent._create_tool_aware_agent` 改为实例化 `RobustToolAwareAgent`，规划、摘要、报告三个子 Agent 全部使用容错解析。
    - 优化 `backend/src/services/notes.py` 笔记工具调用引导语：明确要求 LLM 在 `TOOL_CALL` 的 `content` 字段只填写**一句话简短状态描述**，完整摘要须在工具调用成功后以普通 Markdown 输出，从源头降低 JSON 格式破坏概率。
    - 修正 `backend/src/prompts.py` 中 `task_summarizer_instructions` 的 update 示例：去掉未替换的 `{task_id}` 格式化占位符，并加入同样的 `content` 约束说明。
+
+4. **多智能体协同与通信解决方案设计** <sub>（更新于 2026-03-05）</sub>
+
+   在前三项修复的基础上，对系统架构进行了更深层的重构，完整实现以下三个子功能：
+
+   ---
+
+   **4-1. 模块化 Agent 设计**
+
+   将原来依赖单体大模型堆叠 Prompt 的实现，拆解为三个**单一职责 Agent**，彻底解耦研究流水线：
+
+   | Agent 类 | 文件 | 单一职责 |
+   |---|---|---|
+   | `PlannerAgent` | `services/planner.py` | 意图理解与任务拆解，输出 `List[TodoItem]` |
+   | `SummarizerAgent` | `services/summarizer.py` | 网页阅读与信息浓缩，支持同步与流式两种模式 |
+   | `WriterAgent` | `services/reporter.py` | 逻辑组织与长文生成，消费前两个 Agent 的输出 |
+
+   各 Agent 均保留向后兼容别名（`PlanningService = PlannerAgent` 等），不破坏旧引用。
+
+   在 `agent.py` 中，三个 Agent 通过依赖注入组合成有序流水线：
+
+   ```
+   planner.plan_todo_list(state)
+       → [并发] summarizer.stream_task_summary(state, task, context)
+           → writer.generate_report(state)
+   ```
+
+   每个 Agent 独立接收 `ToolAwareSimpleAgent`（或 `RobustToolAwareAgent`）实例，互不干扰，可单独替换或测试。
+
+   ---
+
+   **4-2. 统一工具注册表（AgentToolRegistry）**
+
+   新增 `backend/src/tool_registry.py`，实现可插拔的工具管理模块：
+
+   ```python
+   class AgentToolRegistry:
+       def register(self, name: str, tool) -> "AgentToolRegistry": ...
+       def get(self, name: str): ...
+       def list_tools(self) -> list[str]: ...
+
+       @property
+       def hello_agents_registry(self) -> ToolRegistry | None: ...
+
+       @property
+       def note_tool(self) -> NoteTool | None: ...
+   ```
+
+   核心特性：
+   - **链式注册**：`registry.register("wiki", WikiTool()).register("kb", KBTool())`
+   - **自动内置**：`enable_notes=True` 时自动注册 `NoteTool`，无需手动配置
+   - **单一实例**：`agent.py` 中 `self.tool_registry = AgentToolRegistry(self.config)` 替代原来分散的 `self.note_tool + self.tools_registry`，三个 Agent 共享同一注册表
+   - **启动可观测**：FastAPI 启动时通过 `registry.list_tools()` 打印所有已注册工具名称
+
+   ---
+
+   **4-3. SSE 异步事件流机制**
+
+   在 `models.py` 新增 `SSEEventType(str, Enum)`，定义 10 种标准化事件类型：
+
+   | 事件类型 | 触发时机 |
+   |---|---|
+   | `status` | 全局阶段切换（初始化、生成报告等）|
+   | `todo_list` | `PlannerAgent` 输出任务列表后 |
+   | `task_status` | 单任务状态变更（`in_progress` / `completed` / `failed`）|
+   | `sources` | 搜索完成，来源 URL 汇总 |
+   | `task_summary_chunk` | `SummarizerAgent` 流式输出摘要片段 |
+   | `tool_call` | Agent 调用工具时的详情 |
+   | `report_note` | 最终报告笔记已持久化 |
+   | `final_report` | `WriterAgent` 完整报告生成完毕 |
+   | `done` | 流正常结束 |
+   | `error` | 异常事件 |
+
+   `/research/stream` 端点（`main.py`）返回 `StreamingResponse(media_type="text/event-stream")`，事件格式为标准 SSE：
+
+   ```
+   data: {"type": "task_summary_chunk", "task_id": 1, "chunk": "量子纠缠是...", "step": 1}
+   ```
+
+   并发实现：`run_stream()` 为每个子任务启动独立 `Thread`，通过线程安全的 `Queue` 汇聚事件；`Semaphore(1)` 保证本地 Ollama 串行调用，避免并发超时。
 
 ### 许可证
 
