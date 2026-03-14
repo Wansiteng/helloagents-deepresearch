@@ -39,9 +39,6 @@ open_source_model_constraint_prompt = """
 示例 C — 更新笔记：
 [TOOL_CALL:note:{"action":"update","note_id":"note_20240101_120000_0","task_id":1,"title":"任务 1: 背景梳理","note_type":"task_state","tags":["deep_research","task_1"],"content":"已完成摘要"}]
 
-示例 D — 搜索工具：
-[TOOL_CALL:search:{"query":"Qwen3 architecture benchmark 2024"}]
-
 ────────────────────────────────────────────────────────────────────────────────
 ❌ 绝对禁止以下行为（违反将导致工具调用失败）
 ────────────────────────────────────────────────────────────────────────────────

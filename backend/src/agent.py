@@ -141,6 +141,8 @@ class DeepResearchAgent:
             llm_kwargs["base_url"] = self.config.lmstudio_base_url
             if self.config.llm_api_key:
                 llm_kwargs["api_key"] = self.config.llm_api_key
+            else:
+                llm_kwargs["api_key"] = "lm-studio"
         else:
             if self.config.llm_base_url:
                 llm_kwargs["base_url"] = self.config.llm_base_url

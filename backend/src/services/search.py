@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any, Optional, Tuple
 
 from hello_agents.tools import SearchTool
@@ -20,6 +21,36 @@ MAX_TOKENS_PER_SOURCE = 2000
 _GLOBAL_SEARCH_TOOL = SearchTool(backend="hybrid")
 
 
+def _duckduckgo_search_direct(query: str, max_results: int = 5) -> dict[str, Any]:
+    """直接使用 ddgs.DDGS 并注入代理，绕过 hello_agents 内部实现。"""
+    try:
+        from ddgs import DDGS
+    except ImportError:
+        raise RuntimeError("ddgs 未安装")
+
+    proxy = os.environ.get("HTTP_PROXY") or os.environ.get("http_proxy")
+    ddgs_kwargs: dict[str, Any] = {"timeout": 30}
+    if proxy:
+        ddgs_kwargs["proxy"] = proxy
+
+    logger.debug("DuckDuckGo direct search: query=%s proxy=%s", query, proxy)
+
+    with DDGS(**ddgs_kwargs) as client:
+        raw = list(client.text(query, max_results=max_results))
+
+    results = [
+        {
+            "title": item.get("title", ""),
+            "url": item.get("href", ""),
+            "content": item.get("body", ""),
+        }
+        for item in raw
+        if item.get("href")
+    ]
+
+    return {"results": results, "backend": "duckduckgo", "answer": None, "notices": []}
+
+
 def dispatch_search(
     query: str,
     config: Configuration,
@@ -29,21 +60,29 @@ def dispatch_search(
 
     search_api = get_config_value(config.search_api)
 
-    try:
-        raw_response = _GLOBAL_SEARCH_TOOL.run(
-            {
-                "input": query,
-                "backend": search_api,
-                "mode": "structured",
-                "fetch_full_page": config.fetch_full_page,
-                "max_results": 5,
-                "max_tokens_per_source": MAX_TOKENS_PER_SOURCE,
-                "loop_count": loop_count,
-            }
-        )
-    except Exception as exc:  # pragma: no cover - defensive logging
-        logger.exception("Search backend %s failed: %s", search_api, exc)
-        raise
+    # duckduckgo 直接走带代理的实现，其他 backend 走 hello_agents SearchTool
+    if search_api == "duckduckgo":
+        try:
+            raw_response = _duckduckgo_search_direct(query)
+        except Exception as exc:
+            logger.exception("DuckDuckGo direct search failed: %s", exc)
+            raise
+    else:
+        try:
+            raw_response = _GLOBAL_SEARCH_TOOL.run(
+                {
+                    "input": query,
+                    "backend": search_api,
+                    "mode": "structured",
+                    "fetch_full_page": config.fetch_full_page,
+                    "max_results": 5,
+                    "max_tokens_per_source": MAX_TOKENS_PER_SOURCE,
+                    "loop_count": loop_count,
+                }
+            )
+        except Exception as exc:
+            logger.exception("Search backend %s failed: %s", search_api, exc)
+            raise
 
     if isinstance(raw_response, str):
         notices = [raw_response]
