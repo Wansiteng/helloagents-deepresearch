@@ -138,6 +138,17 @@ class Configuration(BaseModel):
             "fails to produce valid JSON in open-source model mode."
         ),
     )
+    no_think_mode: bool = Field(
+        default=False,
+        title="No Think Mode (Qwen3 series)",
+        description=(
+            "Qwen3 系列专用：在每个 Agent 的 System Prompt 开头注入 '/no_think' 指令，"
+            "禁用思维链生成以加快响应速度并降低 token 消耗。"
+            "适合对延迟敏感、无需深度推理的场景；"
+            "深度研究任务建议保持默认关闭以发挥 Qwen3 思维链推理优势，"
+            "配合 strip_thinking_tokens=True 自动清理思考输出。"
+        ),
+    )
 
     @classmethod
     def from_env(cls, overrides: Optional[dict[str, Any]] = None) -> "Configuration":
@@ -176,6 +187,7 @@ class Configuration(BaseModel):
             "vector_top_k": os.getenv("VECTOR_TOP_K"),
             "use_open_source_mode": os.getenv("USE_OPEN_SOURCE_MODE"),
             "open_source_model_max_retries": os.getenv("OPEN_SOURCE_MODEL_MAX_RETRIES"),
+            "no_think_mode": os.getenv("NO_THINK_MODE"),
         }
 
         for key, value in env_aliases.items():

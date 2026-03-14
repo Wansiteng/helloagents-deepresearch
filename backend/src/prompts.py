@@ -107,20 +107,18 @@ todo_planner_instructions = """
 研究主题：{research_topic}
 </CONTEXT>
 
-<FORMAT>
-请严格以 JSON 格式回复：
-{{
-  "tasks": [
-    {{
-      "title": "任务名称（10字内，突出重点）",
-      "intent": "任务要解决的核心问题，用1-2句描述",
-      "query": "建议使用的检索关键词"
-    }}
-  ]
-}}
-</FORMAT>
+<CRITICAL_FORMAT_REQUIREMENT>
+⚠ 你的回复**有且仅有**一个纯 JSON 对象，禁止输出任何 Markdown、表格、标题、解释或其他文字。
+⚠ 禁止用 ```json ``` 代码块包裹，直接输出裸 JSON。
 
-如果主题信息不足以规划任务，请输出空数组：{{"tasks": []}}。必要时使用笔记工具记录你的思考过程。
+必须严格遵循以下格式（3-5 个任务）：
+{{"tasks":[{{"title":"任务名称（10字内）","intent":"任务要解决的核心问题，1-2句","query":"建议使用的英文或中文检索关键词"}}]}}
+
+示例（仅供格式参考，内容需根据研究主题自行生成）：
+{{"tasks":[{{"title":"核心概念梳理","intent":"理解该技术的基本定义与核心原理","query":"topic definition core principles overview"}},{{"title":"应用场景分析","intent":"了解该技术在实际中的应用价值与典型案例","query":"topic real-world applications use cases"}}]}}
+</CRITICAL_FORMAT_REQUIREMENT>
+
+如果主题信息不足以规划任务，请输出：{{"tasks": []}}
 """
 
 

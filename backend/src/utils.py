@@ -17,13 +17,43 @@ def get_config_value(value: Any) -> str:
 
 
 def strip_thinking_tokens(text: str) -> str:
-    """Remove ``<think>`` sections from model responses."""
+    """Remove thinking-chain sections from model responses.
 
+    兼容多种 token 变体：
+    - Qwen3 标准格式：``<think>...</think>``
+    - Ollama 管道变体 A：``<|think|>...</|think|>``（``</|`` 前缀闭合）
+    - Ollama 管道变体 B：``<|think|>...<|/think|>``（``<|/`` 前缀闭合）
+    - 未闭合的开放标签（丢弃标签及其后所有内容作为兜底）
+    """
+    # ── 变体 1：标准 <think>...</think> ────────────────────────────────
     while "<think>" in text and "</think>" in text:
         start = text.find("<think>")
         end = text.find("</think>") + len("</think>")
         text = text[:start] + text[end:]
-    return text
+
+    # ── 变体 2：<|think|> 配合两种可能的闭合标签 ──────────────────────
+    # 不同 Ollama 版本 / 模型模板存在两种闭合写法，逐次查找最近的一个
+    _PIPE_CLOSE_VARIANTS = ("</|think|>", "<|/think|>")
+    while "<|think|>" in text:
+        close_tag: str | None = None
+        close_pos = len(text)
+        for variant in _PIPE_CLOSE_VARIANTS:
+            pos = text.find(variant)
+            if pos != -1 and pos < close_pos:
+                close_tag = variant
+                close_pos = pos
+        if close_tag is None:
+            break
+        start = text.find("<|think|>")
+        end = close_pos + len(close_tag)
+        text = text[:start] + text[end:]
+
+    # ── 兜底：未闭合的孤立开放标签（截断丢弃）──────────────────────────
+    for open_tag in ("<think>", "<|think|>"):
+        if open_tag in text:
+            text = text[:text.find(open_tag)]
+
+    return text.strip()
 
 
 def deduplicate_and_format_sources(

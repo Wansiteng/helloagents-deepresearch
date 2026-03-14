@@ -170,6 +170,15 @@ class DeepResearchAgent:
                 "open_source_mode: injecting constraint prompt for agent '%s'", name
             )
 
+        # ── Qwen3 /no_think 指令注入（可选）──────────────────────────
+        # 当 no_think_mode=True 时在 System Prompt 开头注入 /no_think，
+        # 禁用 Qwen3 思维链生成以提升响应速度；默认关闭以保留推理质量。
+        if self.config.no_think_mode:
+            effective_prompt = "/no_think\n" + effective_prompt
+            logger.debug(
+                "no_think_mode: injecting /no_think directive for agent '%s'", name
+            )
+
         max_retries = (
             self.config.open_source_model_max_retries
             if self.config.use_open_source_mode

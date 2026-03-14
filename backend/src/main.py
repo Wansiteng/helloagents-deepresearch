@@ -8,8 +8,16 @@ from pathlib import Path
 from typing import Any, Dict, Iterator, Optional
 
 # 加载 .env 文件（从 src/ 向上查找到 backend/）
+import os as _os
 from dotenv import load_dotenv
-load_dotenv(Path(__file__).parent.parent / ".env")
+load_dotenv(Path(__file__).parent.parent / ".env", override=True)
+
+# Cursor/VSCode 会自动向子进程注入系统代理变量（如 http_proxy=http://127.0.0.1:49306），
+# 导致 ddgs（DuckDuckGo）请求被 Clash/v2ray 拦截返回 403。
+# 清除所有代理相关环境变量，让 HTTP 客户端全部直连。
+for _proxy_key in ("http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY",
+                    "all_proxy", "ALL_PROXY", "no_proxy", "NO_PROXY"):
+    _os.environ.pop(_proxy_key, None)
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -131,6 +139,7 @@ def create_app() -> FastAPI:
     @app.get("/health")
     def health_check() -> Dict[str, str]:
         return {"status": "ok"}
+
 
     @app.post("/research", response_model=ResearchResponse)
     def run_research(payload: ResearchRequest) -> ResearchResponse:
