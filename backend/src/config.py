@@ -150,6 +150,82 @@ class Configuration(BaseModel):
         ),
     )
 
+    # ── 并发与性能 ────────────────────────────────────────────────────────
+    llm_concurrency: int = Field(
+        default=1,
+        title="LLM Concurrency",
+        description=(
+            "并发 LLM 请求数上限（用于 Semaphore 控制）。"
+            "默认 1 适合 Ollama 单实例；如启用 OLLAMA_NUM_PARALLEL=N，"
+            "可将此值同步设置为 N 以充分利用并发能力。"
+        ),
+    )
+
+    # ── 动态规划 ──────────────────────────────────────────────────────────
+    enable_dynamic_planning: bool = Field(
+        default=True,
+        title="Enable Dynamic Planning",
+        description=(
+            "初始任务批次完成后，由 PlannerAgent 评估研究覆盖度，"
+            "若发现明显空白则自动追加最多 max_dynamic_tasks 个补充任务。"
+        ),
+    )
+    max_dynamic_tasks: int = Field(
+        default=2,
+        title="Max Dynamic Tasks",
+        description="动态规划最多追加的额外任务数量。",
+    )
+
+    # ── 反思评审 ──────────────────────────────────────────────────────────
+    enable_reflection: bool = Field(
+        default=True,
+        title="Enable Reflection",
+        description=(
+            "最终报告生成后，由 CriticAgent 进行质量评审。"
+            "若评分低于 reflection_score_threshold，自动补充研究并重新生成报告。"
+        ),
+    )
+    reflection_score_threshold: int = Field(
+        default=6,
+        title="Reflection Score Threshold",
+        description="触发补充研究的质量评分下限（1-10），低于此分值将追加研究任务。",
+    )
+
+    # ── 搜索策略多样化 ────────────────────────────────────────────────────
+    search_retry_on_empty: bool = Field(
+        default=True,
+        title="Search Retry on Empty Results",
+        description=(
+            "当搜索返回空结果时，自动尝试备用查询词（任务标题 + 研究主题 组合），"
+            "提高搜索成功率，无需额外 LLM 调用。"
+        ),
+    )
+
+    # ── 渐进式报告生成 ────────────────────────────────────────────────────
+    enable_progressive_report: bool = Field(
+        default=True,
+        title="Enable Progressive Report",
+        description=(
+            "每个子任务完成后立即格式化该任务摘要为章节草稿并推送前端，"
+            "用户可在等待最终报告期间实时阅读中间成果（无额外 LLM 调用）。"
+        ),
+    )
+
+    # ── 上下文窗口管理 ────────────────────────────────────────────────────
+    context_max_chars: int = Field(
+        default=15000,
+        title="Context Max Chars",
+        description=(
+            "传入 WriterAgent 的任务摘要总字符上限。超出时自动按 summary_card_max_chars "
+            "截断各任务摘要，防止提示词超出本地模型上下文窗口。0 表示不限制。"
+        ),
+    )
+    summary_card_max_chars: int = Field(
+        default=800,
+        title="Summary Card Max Chars",
+        description="上下文压缩时单个任务摘要的最大字符数。",
+    )
+
     @classmethod
     def from_env(cls, overrides: Optional[dict[str, Any]] = None) -> "Configuration":
         """Create a configuration object using environment variables and overrides."""
@@ -188,6 +264,15 @@ class Configuration(BaseModel):
             "use_open_source_mode": os.getenv("USE_OPEN_SOURCE_MODE"),
             "open_source_model_max_retries": os.getenv("OPEN_SOURCE_MODEL_MAX_RETRIES"),
             "no_think_mode": os.getenv("NO_THINK_MODE"),
+            "llm_concurrency": os.getenv("LLM_CONCURRENCY"),
+            "enable_dynamic_planning": os.getenv("ENABLE_DYNAMIC_PLANNING"),
+            "max_dynamic_tasks": os.getenv("MAX_DYNAMIC_TASKS"),
+            "enable_reflection": os.getenv("ENABLE_REFLECTION"),
+            "reflection_score_threshold": os.getenv("REFLECTION_SCORE_THRESHOLD"),
+            "search_retry_on_empty": os.getenv("SEARCH_RETRY_ON_EMPTY"),
+            "enable_progressive_report": os.getenv("ENABLE_PROGRESSIVE_REPORT"),
+            "context_max_chars": os.getenv("CONTEXT_MAX_CHARS"),
+            "summary_card_max_chars": os.getenv("SUMMARY_CARD_MAX_CHARS"),
         }
 
         for key, value in env_aliases.items():

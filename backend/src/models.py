@@ -59,6 +59,15 @@ class SSEEventType(str, Enum):
     ERROR = "error"
     """任意阶段发生异常时推送的错误事件。"""
 
+    SECTION_DRAFT = "section_draft"
+    """单任务完成后立即推送的渐进式章节草稿（无额外 LLM 调用，直接格式化摘要）。"""
+
+    DYNAMIC_TASKS = "dynamic_tasks"
+    """动态规划 Agent 发现研究空白后补充的新任务列表。"""
+
+    REFLECTION = "reflection"
+    """反思 Agent 对最终报告的质量评审结果（评分 + 空白列表）。"""
+
 
 @dataclass(kw_only=True)
 class TodoItem:
@@ -75,6 +84,8 @@ class TodoItem:
     note_id: Optional[str] = field(default=None)
     note_path: Optional[str] = field(default=None)
     stream_token: Optional[str] = field(default=None)
+    section_draft: Optional[str] = field(default=None)
+    """渐进式报告：任务完成后格式化的章节草稿（无 LLM 调用）。"""
 
 
 @dataclass(kw_only=True)

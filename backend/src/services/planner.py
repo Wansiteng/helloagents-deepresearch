@@ -18,7 +18,7 @@ from hello_agents import ToolAwareSimpleAgent
 
 from config import Configuration
 from models import SummaryState, TodoItem
-from prompts import get_current_date, todo_planner_instructions
+from prompts import gap_assessment_instructions, get_current_date, todo_planner_instructions
 from utils import strip_thinking_tokens
 
 logger = logging.getLogger(__name__)
@@ -98,6 +98,75 @@ class PlannerAgent:
         titles = [task.title for task in todo_items]
         logger.info("Planner produced %d tasks: %s", len(todo_items), titles)
         return todo_items
+
+    def assess_gaps(self, state: SummaryState) -> list[TodoItem]:
+        """评估已完成任务的覆盖度，返回补充任务列表。
+
+        参数
+        ----
+        state:
+            包含已完成子任务的研究状态。
+
+        返回
+        ----
+        最多 ``config.max_dynamic_tasks`` 个新 :class:`~models.TodoItem`；
+        若覆盖度足够或解析失败则返回空列表。
+        """
+        completed = [t for t in state.todo_items if t.status == "completed"]
+        if not completed:
+            return []
+
+        completed_block = "\n".join(
+            f"- 任务 {t.id}《{t.title}》：{t.intent}" for t in completed
+        )
+        max_tasks = self._config.max_dynamic_tasks
+
+        prompt = gap_assessment_instructions.format(
+            research_topic=state.research_topic or "",
+            completed_tasks_block=completed_block,
+            max_tasks=max_tasks,
+        )
+
+        response = self._agent.run(prompt)
+        self._agent.clear_history()
+        logger.info("Gap assessment raw output (truncated): %s", response[:400])
+
+        tasks_payload = self._extract_tasks_from_gap_response(response)
+        if not tasks_payload:
+            logger.info("Gap assessment: 无需补充任务")
+            return []
+
+        existing_ids = {t.id for t in state.todo_items}
+        next_id = max(existing_ids) + 1 if existing_ids else 100
+
+        new_tasks: list[TodoItem] = []
+        for i, item in enumerate(tasks_payload[:max_tasks]):
+            title = str(item.get("title") or f"补充任务{i+1}").strip()
+            intent = str(item.get("intent") or "覆盖研究空白").strip()
+            query = str(item.get("query") or state.research_topic or "").strip()
+            if not query:
+                continue
+            new_tasks.append(TodoItem(id=next_id + i, title=title, intent=intent, query=query))
+
+        logger.info("Gap assessment: 补充 %d 个任务: %s", len(new_tasks), [t.title for t in new_tasks])
+        return new_tasks
+
+    def _extract_tasks_from_gap_response(self, raw_response: str) -> list[dict[str, Any]]:
+        """解析 gap assessment 的 JSON 响应。"""
+        text = raw_response.strip()
+        if self._config.strip_thinking_tokens:
+            from utils import strip_thinking_tokens
+            text = strip_thinking_tokens(text)
+
+        payload = self._extract_json_payload(text)
+        if isinstance(payload, dict):
+            if not payload.get("has_gaps", False):
+                return []
+            candidate = payload.get("additional_tasks", [])
+            if isinstance(candidate, list):
+                return [item for item in candidate if isinstance(item, dict)]
+
+        return []
 
     @staticmethod
     def create_fallback_task(state: SummaryState) -> TodoItem:

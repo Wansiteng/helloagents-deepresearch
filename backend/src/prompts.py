@@ -201,6 +201,63 @@ REPORT_SECTIONS: list[tuple[str, str, str]] = [
     ),
 ]
 
+gap_assessment_instructions = """
+<CONTEXT>
+研究主题：{research_topic}
+
+已完成的研究任务：
+{completed_tasks_block}
+</CONTEXT>
+
+<TASK>
+你是一名研究规划专家。请评估以上已完成的研究任务，判断是否存在明显的研究空白或遗漏的关键角度。
+
+如果需要补充调研，请提出最多 {max_tasks} 个互补的新任务；如果覆盖度已足够，输出空列表。
+</TASK>
+
+<CRITICAL_FORMAT_REQUIREMENT>
+⚠ 你的回复**有且仅有**一个纯 JSON 对象，禁止任何 Markdown、解释或额外文字。
+直接输出裸 JSON（禁止 ```json ``` 包裹）：
+
+{{"has_gaps": true, "additional_tasks": [{{"title":"任务名称","intent":"核心问题","query":"检索词"}}]}}
+
+若覆盖度已足够：
+{{"has_gaps": false, "additional_tasks": []}}
+</CRITICAL_FORMAT_REQUIREMENT>
+"""
+
+
+reflection_instructions = """
+<CONTEXT>
+研究主题：{research_topic}
+
+最终报告：
+{report}
+</CONTEXT>
+
+<TASK>
+你是一名研究质量评审专家。请对上述研究报告进行质量评审，重点评估：
+1. 内容覆盖度（是否遗漏重要方面）
+2. 事实支撑度（结论是否有来源支撑）
+3. 分析深度（是否有真正的洞见）
+4. 逻辑结构（是否清晰连贯）
+</TASK>
+
+<CRITICAL_FORMAT_REQUIREMENT>
+⚠ 你的回复**有且仅有**一个纯 JSON 对象，禁止任何 Markdown、解释或额外文字。
+直接输出裸 JSON：
+
+{{"score": 7, "needs_more_research": false, "gaps": ["..."], "additional_queries": []}}
+
+字段说明：
+- score: 综合评分 1-10（7分以上视为合格）
+- needs_more_research: 是否需要补充研究（评分低于阈值且有明确空白时为 true）
+- gaps: 报告的主要不足点列表（最多 3 条，简洁描述）
+- additional_queries: 若需补充研究，给出最多 2 个具体搜索查询词
+</CRITICAL_FORMAT_REQUIREMENT>
+"""
+
+
 report_section_writer_instructions = """
 你是一名专业的分析报告撰写者，正在采用"分章节生成"策略逐节撰写研究报告。
 

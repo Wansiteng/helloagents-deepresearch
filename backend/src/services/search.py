@@ -116,6 +116,52 @@ def dispatch_search(
     return payload, notices, answer_text, backend_label
 
 
+def dispatch_search_with_retry(
+    query: str,
+    config: Configuration,
+    loop_count: int,
+    fallback_queries: Optional[list[str]] = None,
+) -> Tuple[dict[str, Any] | None, list[str], Optional[str], str]:
+    """执行搜索，若结果为空则按顺序尝试备用查询词。
+
+    参数
+    ----
+    query:
+        主搜索查询词。
+    config:
+        运行时配置。
+    loop_count:
+        当前研究循环次数（传给底层 dispatch_search）。
+    fallback_queries:
+        备用查询词列表，主查询无结果时按序尝试。
+
+    返回
+    ----
+    与 ``dispatch_search`` 相同的四元组。
+    """
+    result, notices, answer, backend = dispatch_search(query, config, loop_count)
+
+    if result and result.get("results"):
+        return result, notices, answer, backend
+
+    if not fallback_queries:
+        return result, notices, answer, backend
+
+    for fallback in fallback_queries:
+        if not fallback or fallback.strip() == query.strip():
+            continue
+        logger.info("主查询 '%s' 无结果，尝试备用查询 '%s'", query, fallback)
+        try:
+            result2, notices2, answer2, backend2 = dispatch_search(fallback, config, loop_count)
+            if result2 and result2.get("results"):
+                combined_notices = notices + notices2 + [f"使用备用查询词: {fallback}"]
+                return result2, combined_notices, answer2, backend2
+        except Exception as exc:
+            logger.warning("备用查询 '%s' 失败: %s", fallback, exc)
+
+    return result, notices, answer, backend
+
+
 def prepare_research_context(
     search_result: dict[str, Any] | None,
     answer_text: Optional[str],
