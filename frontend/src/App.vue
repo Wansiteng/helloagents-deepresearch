@@ -59,18 +59,98 @@
             </label>
           </section>
 
+          <!-- 本地 LLM 选择 -->
+          <section class="llm-probe-section">
+            <div class="llm-probe-header">
+              <span class="llm-probe-title">本地 LLM</span>
+              <button
+                type="button"
+                class="probe-refresh-btn"
+                :disabled="probeLoading"
+                @click="refreshProbe"
+                :title="probeLoading ? '探测中…' : '重新探测本地服务'"
+              >
+                <svg
+                  class="probe-refresh-icon"
+                  :class="{ spinning: probeLoading }"
+                  viewBox="0 0 24 24"
+                  width="14"
+                  height="14"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M4 4v5h.582m15.356 2A8 8 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8 8 0 01-15.357-2m15.357 2H15"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+                {{ probeLoading ? "探测中…" : "刷新" }}
+              </button>
+            </div>
+
+            <p v-if="probeError" class="probe-error">{{ probeError }}</p>
+
+            <template v-else-if="!probeLoading">
+              <div v-if="runningProviders.length === 0" class="probe-empty">
+                未检测到本地 LLM 服务（Ollama / LM Studio / mlx-lm），将沿用后端配置。
+              </div>
+
+              <div v-else class="llm-selects">
+                <label class="field option">
+                  <span>服务</span>
+                  <select v-model="form.llmProvider" @change="form.llmModel = modelsForProvider[0] ?? ''">
+                    <option value="">沿用后端配置</option>
+                    <option
+                      v-for="key in runningProviders"
+                      :key="key"
+                      :value="key"
+                    >
+                      {{ PROVIDER_LABELS[key] ?? key }}
+                    </option>
+                  </select>
+                </label>
+
+                <label class="field option" v-if="form.llmProvider">
+                  <span>模型</span>
+                  <select v-model="form.llmModel">
+                    <template v-if="modelsForProvider.length > 0">
+                      <option
+                        v-for="m in modelsForProvider"
+                        :key="m"
+                        :value="m"
+                      >{{ m }}</option>
+                    </template>
+                    <template v-else>
+                      <option value="">（服务已运行，当前无可列出的模型）</option>
+                    </template>
+                  </select>
+                </label>
+              </div>
+            </template>
+
+            <div v-else class="probe-loading">
+              <svg class="spinner-sm" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" stroke-width="3" />
+              </svg>
+              正在探测本地 LLM 服务…
+            </div>
+          </section>
+
           <div class="form-actions">
-            <button class="submit" type="submit" :disabled="loading">
+            <button class="submit" type="submit" :disabled="loading || preflightChecking">
               <span class="submit-label">
                 <svg
-                  v-if="loading"
+                  v-if="loading || preflightChecking"
                   class="spinner"
                   viewBox="0 0 24 24"
                   aria-hidden="true"
                 >
                   <circle cx="12" cy="12" r="9" stroke-width="3" />
                 </svg>
-                {{ loading ? "研究进行中..." : "开始研究" }}
+                {{ preflightChecking ? "检测模型中…" : loading ? "研究进行中..." : "开始研究" }}
               </span>
             </button>
             <button
@@ -84,14 +164,17 @@
           </div>
         </form>
 
-        <p v-if="error" class="error-chip">
-          <svg viewBox="0 0 20 20" aria-hidden="true">
-            <path
-              d="M10 3.2c-.3 0-.6.2-.8.5L3.4 15c-.4.7.1 1.6.8 1.6h11.6c.7 0 1.2-.9.8-1.6L10.8 3.7c-.2-.3-.5-.5-.8-.5Zm0 4.3c.4 0 .7.3.7.7v4c0 .4-.3.7-.7.7s-.7-.3-.7-.7V8.2c0-.4.3-.7.7-.7Zm0 6.6a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z"
-            />
-          </svg>
-          {{ error }}
-        </p>
+        <div v-if="error" class="error-block">
+          <p class="error-chip">
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path
+                d="M10 3.2c-.3 0-.6.2-.8.5L3.4 15c-.4.7.1 1.6.8 1.6h11.6c.7 0 1.2-.9.8-1.6L10.8 3.7c-.2-.3-.5-.5-.8-.5Zm0 4.3c.4 0 .7.3.7.7v4c0 .4-.3.7-.7.7s-.7-.3-.7-.7V8.2c0-.4.3-.7.7-.7Zm0 6.6a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z"
+              />
+            </svg>
+            {{ error }}
+          </p>
+          <p v-if="preflightHint" class="preflight-hint" v-html="preflightHint.replace(/\n/g, '<br/>')"></p>
+        </div>
         <p v-else-if="loading" class="hint muted">
           正在收集线索与证据，实时进展见右侧区域。
         </p>
@@ -121,6 +204,16 @@
           <div class="info-item" v-if="form.searchApi">
             <label>搜索引擎</label>
             <p>{{ form.searchApi }}</p>
+          </div>
+
+          <div class="info-item" v-if="form.llmProvider">
+            <label>本地模型</label>
+            <p>{{ PROVIDER_LABELS[form.llmProvider] ?? form.llmProvider }}{{ form.llmModel ? ` · ${form.llmModel}` : "" }}</p>
+          </div>
+
+          <div class="info-item error-info" v-if="error && !loading">
+            <label>错误详情</label>
+            <p class="error-detail-text">{{ error }}</p>
           </div>
 
           <div class="info-item" v-if="totalTasks > 0">
@@ -345,12 +438,15 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, reactive, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import HistoryModal from "./components/HistoryModal.vue";
 
 import {
   runResearchStream,
-  type ResearchStreamEvent
+  probeLocalLLMs,
+  llmPreflight,
+  type ResearchStreamEvent,
+  type LocalLLMServiceInfo
 } from "./services/api";
 
 const isHistoryOpen = ref(false);
@@ -390,10 +486,62 @@ interface TodoTaskView {
 
 const form = reactive({
   topic: "",
-  searchApi: ""
+  searchApi: "",
+  llmProvider: "",
+  llmModel: ""
 });
 
+// ── Local LLM probe ──────────────────────────────────────────────────────────
+const probeServices = ref<Record<string, LocalLLMServiceInfo>>({});
+const probeLoading = ref(false);
+const probeError = ref("");
+
+const PROVIDER_LABELS: Record<string, string> = {
+  ollama: "Ollama",
+  lmstudio: "LM Studio",
+  mlx: "MLX (mlx-lm)",
+};
+
+const runningProviders = computed(() =>
+  Object.entries(probeServices.value)
+    .filter(([, info]) => info.running)
+    .map(([key]) => key)
+);
+
+const modelsForProvider = computed<string[]>(() => {
+  if (!form.llmProvider) return [];
+  const info = probeServices.value[form.llmProvider];
+  return info?.models ?? [];
+});
+
+async function refreshProbe() {
+  probeLoading.value = true;
+  probeError.value = "";
+  form.llmProvider = "";
+  form.llmModel = "";
+  try {
+    const result = await probeLocalLLMs();
+    probeServices.value = result.services;
+    const first = Object.entries(result.services).find(([, v]) => v.running);
+    if (first) {
+      form.llmProvider = first[0];
+      form.llmModel = first[1].models[0] ?? "";
+    }
+  } catch (e) {
+    probeError.value = "无法连接后端探测接口，请确认后端已启动";
+  } finally {
+    probeLoading.value = false;
+  }
+}
+
+onMounted(() => {
+  refreshProbe();
+});
+// ─────────────────────────────────────────────────────────────────────────────
+
 const loading = ref(false);
+const preflightChecking = ref(false);
+const preflightHint = ref("");
 const error = ref("");
 const progressLogs = ref<string[]>([]);
 const logsCollapsed = ref(false);
@@ -686,6 +834,26 @@ const handleSubmit = async () => {
     return;
   }
 
+  // ── LLM 预检：仅在用户选择了本地 provider 时执行 ───────────────────────
+  if (form.llmProvider) {
+    preflightChecking.value = true;
+    preflightHint.value = "";
+    error.value = "";
+    try {
+      const result = await llmPreflight(form.llmProvider, form.llmModel || undefined);
+      if (!result.ok) {
+        error.value = result.error ?? "LLM 预检失败";
+        preflightHint.value = result.hint ?? "";
+        preflightChecking.value = false;
+        return;
+      }
+    } catch {
+      // 预检接口本身不可用时不阻断，让正式流程去报错
+    }
+    preflightChecking.value = false;
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
   if (currentController) {
     currentController.abort();
     currentController = null;
@@ -693,6 +861,7 @@ const handleSubmit = async () => {
 
   loading.value = true;
   error.value = "";
+  preflightHint.value = "";
   isExpanded.value = true;
   resetWorkflowState();
 
@@ -701,7 +870,9 @@ const handleSubmit = async () => {
 
   const payload = {
     topic: form.topic.trim(),
-    search_api: form.searchApi || undefined
+    search_api: form.searchApi || undefined,
+    llm_provider: form.llmProvider || undefined,
+    local_llm: form.llmModel || undefined,
   };
 
   try {
@@ -2345,5 +2516,140 @@ select:focus {
   border-color: var(--primary-color);
   color: var(--primary-color);
   transform: translateY(-1px);
+}
+
+/* ── Preflight hint & error detail ──────────────────────────────────────── */
+.error-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.preflight-hint {
+  margin: 0;
+  padding: 10px 14px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #92400e;
+  background: rgba(254, 243, 199, 0.85);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 10px;
+}
+
+.error-info label {
+  color: #dc2626 !important;
+}
+
+.error-detail-text {
+  font-size: 12px !important;
+  color: #dc2626 !important;
+  word-break: break-all;
+  background: rgba(254, 226, 226, 0.5);
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  margin: 0;
+}
+
+/* ── Local LLM probe section ─────────────────────────────────────────────── */
+.llm-probe-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  background: rgba(248, 250, 252, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 14px;
+}
+
+.llm-probe-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.llm-probe-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.probe-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #475569;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.probe-refresh-btn:hover:not(:disabled) {
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #3b82f6;
+}
+
+.probe-refresh-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.probe-refresh-icon {
+  flex-shrink: 0;
+  transition: transform 0.6s linear;
+}
+
+.probe-refresh-icon.spinning {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.probe-empty {
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.5;
+}
+
+.probe-error {
+  font-size: 12px;
+  color: #dc2626;
+  margin: 0;
+}
+
+.probe-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.spinner-sm {
+  width: 14px;
+  height: 14px;
+  stroke: #6366f1;
+  fill: none;
+  animation: spin 1s linear infinite;
+}
+
+.spinner-sm circle {
+  stroke-dasharray: 45;
+  stroke-dashoffset: 10;
+}
+
+.llm-selects {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 </style>

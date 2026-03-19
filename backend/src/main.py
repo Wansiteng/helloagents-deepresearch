@@ -39,6 +39,11 @@ try:
 except Exception:
     pass
 
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+
+import requests as _requests
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -76,6 +81,36 @@ class ResearchRequest(BaseModel):
         default=None,
         description="Override the default search backend configured via env",
     )
+    llm_provider: str | None = Field(
+        default=None,
+        description="Override LLM provider: ollama | lmstudio | mlx | custom",
+    )
+    local_llm: str | None = Field(
+        default=None,
+        description="Override the model name/id to use for this request",
+    )
+
+
+class LocalLLMServiceInfo(BaseModel):
+    running: bool
+    models: list[str]
+
+
+class ProbeLocalLLMsResponse(BaseModel):
+    services: dict[str, LocalLLMServiceInfo]
+
+
+class PreflightRequest(BaseModel):
+    """Payload for LLM preflight check (same fields as ResearchRequest minus topic)."""
+
+    llm_provider: str | None = Field(default=None)
+    local_llm: str | None = Field(default=None)
+
+
+class PreflightResponse(BaseModel):
+    ok: bool
+    error: str | None = None
+    hint: str | None = None
 
 
 class ResearchResponse(BaseModel):
@@ -101,13 +136,93 @@ def _mask_secret(value: Optional[str], visible: int = 4) -> str:
     return f"{value[:visible]}...{value[-visible:]}"
 
 
+_LOCAL_PROVIDERS = {"ollama", "lmstudio", "mlx"}
+
+
 def _build_config(payload: ResearchRequest) -> Configuration:
     overrides: Dict[str, Any] = {}
 
     if payload.search_api is not None:
         overrides["search_api"] = payload.search_api
+    if payload.llm_provider is not None:
+        overrides["llm_provider"] = payload.llm_provider
+    if payload.local_llm is not None:
+        overrides["local_llm"] = payload.local_llm
+        # For local providers, the model is identified by local_llm.
+        # If the env had LLM_MODEL_ID set for a *different* default provider,
+        # clear it so resolved_model() correctly returns local_llm.
+        effective_provider = payload.llm_provider or overrides.get("llm_provider")
+        if effective_provider in _LOCAL_PROVIDERS:
+            overrides["llm_model_id"] = None
 
     return Configuration.from_env(overrides=overrides)
+
+
+_PROBE_TIMEOUT = 2.5  # seconds
+
+
+def _probe_ollama(base_url: str = "http://localhost:11434") -> LocalLLMServiceInfo:
+    """Check Ollama via GET /api/tags."""
+    try:
+        resp = _requests.get(
+            f"{base_url.rstrip('/')}/api/tags",
+            timeout=_PROBE_TIMEOUT,
+            proxies={"http": None, "https": None},
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        models = [m.get("name", "") for m in data.get("models", []) if m.get("name")]
+        return LocalLLMServiceInfo(running=True, models=models)
+    except Exception:
+        return LocalLLMServiceInfo(running=False, models=[])
+
+
+def _probe_openai_compatible(base_url: str) -> LocalLLMServiceInfo:
+    """Check any OpenAI-compatible service via GET /v1/models."""
+    try:
+        url = base_url.rstrip("/")
+        if not url.endswith("/v1"):
+            url = f"{url}/v1"
+        resp = _requests.get(
+            f"{url}/models",
+            timeout=_PROBE_TIMEOUT,
+            proxies={"http": None, "https": None},
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        models = [m.get("id", "") for m in data.get("data", []) if m.get("id")]
+        return LocalLLMServiceInfo(running=True, models=models)
+    except Exception:
+        return LocalLLMServiceInfo(running=False, models=[])
+
+
+def _preflight_hint(error_msg: str, provider: str) -> str:
+    """Map a raw LLM error string to a user-friendly hint."""
+    err_lower = error_msg.lower()
+
+    if "compute error" in err_lower:
+        base = (
+            "LM Studio 推理引擎返回了 Compute error，常见原因：\n"
+            "① 模型正在加载中，请等待 LM Studio 完全加载后重试；\n"
+            "② 系统内存不足（尤其是带 mmproj 的多模态模型需要更多内存）；\n"
+            "③ 尝试在 LM Studio 中卸载再重新加载该模型。"
+        )
+        return base
+
+    if "connection refused" in err_lower or "connect" in err_lower:
+        svc = {"ollama": "Ollama", "lmstudio": "LM Studio", "mlx": "mlx-lm"}.get(provider, "本地 LLM 服务")
+        return f"无法连接到 {svc}，请确认服务已启动并监听默认端口。"
+
+    if "not found" in err_lower or "404" in err_lower:
+        return "模型未找到，请确认模型名称正确，并在本地服务中已完整加载该模型。"
+
+    if "timeout" in err_lower:
+        return "LLM 响应超时，模型可能仍在加载中，请稍等后重试。"
+
+    if "401" in err_lower or "unauthorized" in err_lower:
+        return "API 鉴权失败，请检查 .env 中的 LLM_API_KEY 配置。"
+
+    return "LLM 调用失败，请检查本地服务状态和模型配置后重试。"
 
 
 def create_app() -> FastAPI:
@@ -159,6 +274,68 @@ def create_app() -> FastAPI:
     @app.get("/health")
     def health_check() -> Dict[str, str]:
         return {"status": "ok"}
+
+    @app.get("/probe-local-llms", response_model=ProbeLocalLLMsResponse)
+    def probe_local_llms() -> ProbeLocalLLMsResponse:
+        """Probe locally-running LLM services and return available models.
+
+        Supported services:
+        - **ollama** — default port 11434
+        - **lmstudio** — default port 1234 (OpenAI-compatible)
+        - **mlx** — mlx-lm server, default port 8080 (OpenAI-compatible)
+        """
+        config = Configuration.from_env()
+
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            f_ollama = pool.submit(_probe_ollama, config.ollama_base_url)
+            f_lmstudio = pool.submit(_probe_openai_compatible, config.lmstudio_base_url)
+            f_mlx = pool.submit(_probe_openai_compatible, "http://localhost:8080")
+
+            ollama_info = f_ollama.result()
+            lmstudio_info = f_lmstudio.result()
+            mlx_info = f_mlx.result()
+
+        logger.info(
+            "Local LLM probe: ollama={} lmstudio={} mlx={}",
+            ollama_info.running,
+            lmstudio_info.running,
+            mlx_info.running,
+        )
+
+        return ProbeLocalLLMsResponse(
+            services={
+                "ollama": ollama_info,
+                "lmstudio": lmstudio_info,
+                "mlx": mlx_info,
+            }
+        )
+
+    @app.post("/llm-preflight", response_model=PreflightResponse)
+    def llm_preflight(payload: PreflightRequest) -> PreflightResponse:
+        """Quick sanity-check: send a minimal message to the selected LLM.
+
+        Returns ``{"ok": true}`` if the model responds, otherwise returns
+        ``{"ok": false, "error": "...", "hint": "..."}`` with a human-readable
+        hint so the frontend can display actionable guidance before wasting time
+        on a full research run.
+        """
+        # Build a throw-away ResearchRequest so we can reuse _build_config
+        dummy = ResearchRequest(
+            topic="__preflight__",
+            llm_provider=payload.llm_provider,
+            local_llm=payload.local_llm,
+        )
+        try:
+            config = _build_config(dummy)
+            agent = DeepResearchAgent(config=config)
+            llm = agent._init_llm()
+            llm.invoke([{"role": "user", "content": "Reply with the single word: OK"}])
+            return PreflightResponse(ok=True)
+        except Exception as exc:
+            raw = str(exc)
+            hint = _preflight_hint(raw, payload.llm_provider or "")
+            logger.warning("LLM preflight failed: {}", raw)
+            return PreflightResponse(ok=False, error=raw, hint=hint)
 
 
     @app.post("/research", response_model=ResearchResponse)

@@ -198,6 +198,9 @@ class Configuration(BaseModel):
             for key, value in overrides.items():
                 if value is not None:
                     raw_values[key] = value
+                elif key in raw_values:
+                    # Explicit None in overrides clears a previously-set env value
+                    del raw_values[key]
 
         return cls(**raw_values)
 

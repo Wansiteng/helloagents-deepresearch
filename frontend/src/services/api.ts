@@ -4,6 +4,48 @@ const baseURL =
 export interface ResearchRequest {
   topic: string;
   search_api?: string;
+  llm_provider?: string;
+  local_llm?: string;
+}
+
+export interface LocalLLMServiceInfo {
+  running: boolean;
+  models: string[];
+}
+
+export interface ProbeLocalLLMsResponse {
+  services: Record<string, LocalLLMServiceInfo>;
+}
+
+export async function probeLocalLLMs(): Promise<ProbeLocalLLMsResponse> {
+  const response = await fetch(`${baseURL}/probe-local-llms`, {
+    method: "GET",
+  });
+  if (!response.ok) {
+    throw new Error(`探测本地 LLM 失败，状态码：${response.status}`);
+  }
+  return response.json();
+}
+
+export interface PreflightResponse {
+  ok: boolean;
+  error?: string;
+  hint?: string;
+}
+
+export async function llmPreflight(
+  llm_provider?: string,
+  local_llm?: string
+): Promise<PreflightResponse> {
+  const response = await fetch(`${baseURL}/llm-preflight`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ llm_provider, local_llm }),
+  });
+  if (!response.ok) {
+    throw new Error(`预检请求失败，状态码：${response.status}`);
+  }
+  return response.json();
 }
 
 export interface ResearchStreamEvent {
