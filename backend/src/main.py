@@ -7,39 +7,16 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, Iterator, Optional
 
-# 加载 .env 文件（从 src/ 向上查找到 backend/）
-import os as _os
+# Load .env before bootstrap helpers so they can read LOCAL_PROXY_URL etc.
 from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent / ".env", override=True)
 
-# 从 .env 读取代理配置（load_dotenv 已加载），缓存后再清除 IDE 注入的随机端口。
-_clash_proxy = _os.environ.get("HTTP_PROXY") or _os.environ.get("HTTPS_PROXY") or "http://127.0.0.1:7897"
-for _proxy_key in ("http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY",
-                    "all_proxy", "ALL_PROXY", "no_proxy", "NO_PROXY"):
-    _os.environ.pop(_proxy_key, None)
-_os.environ["http_proxy"] = _clash_proxy
-_os.environ["https_proxy"] = _clash_proxy
-_os.environ["HTTP_PROXY"] = _clash_proxy
-_os.environ["HTTPS_PROXY"] = _clash_proxy
-_os.environ["no_proxy"] = "localhost,127.0.0.1,0.0.0.0"
-_os.environ["NO_PROXY"] = "localhost,127.0.0.1,0.0.0.0"
+from bootstrap.proxy import configure_proxy
+from bootstrap.ddgs_proxy import patch_ddgs_proxy
 
-# ddgs 内部使用 primp（Rust HTTP 客户端），不读取系统代理环境变量。
-# 通过 monkey-patch DDGS.__init__ 强制注入 proxy 参数。
-try:
-    from ddgs import DDGS as _DDGS
-    _orig_ddgs_init = _DDGS.__init__
+_PROXY_URL = configure_proxy()
+patch_ddgs_proxy(_PROXY_URL)
 
-    def _patched_ddgs_init(self, *args, **kwargs):
-        if "proxy" not in kwargs:
-            kwargs["proxy"] = _clash_proxy
-        _orig_ddgs_init(self, *args, **kwargs)
-
-    _DDGS.__init__ = _patched_ddgs_init
-except Exception:
-    pass
-
-import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
 import requests as _requests
