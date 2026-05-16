@@ -211,6 +211,16 @@ class Configuration(BaseModel):
         ),
     )
 
+    # ── 编排器选择 ────────────────────────────────────────────────────────
+    use_new_orchestrator: bool = Field(
+        default=False,
+        title="Use New Orchestrator",
+        description=(
+            "实验性：`/research/stream` 改用新的 ResearchSession 异步状态机，"
+            "而非旧的 DeepResearchAgent.run_stream。默认关闭，旧路径为默认。"
+        ),
+    )
+
     # ── 上下文窗口管理 ────────────────────────────────────────────────────
     context_max_chars: int = Field(
         default=15000,
@@ -273,6 +283,7 @@ class Configuration(BaseModel):
             "enable_progressive_report": os.getenv("ENABLE_PROGRESSIVE_REPORT"),
             "context_max_chars": os.getenv("CONTEXT_MAX_CHARS"),
             "summary_card_max_chars": os.getenv("SUMMARY_CARD_MAX_CHARS"),
+            "use_new_orchestrator": os.getenv("USE_NEW_ORCHESTRATOR"),
         }
 
         for key, value in env_aliases.items():

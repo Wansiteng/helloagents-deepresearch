@@ -364,20 +364,46 @@ def create_app() -> FastAPI:
         """
         try:
             config = _build_config(payload)
-            agent = DeepResearchAgent(config=config)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-        def event_iterator() -> Iterator[str]:
+        def _sse(event: Dict[str, Any]) -> str:
+            return f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+
+        _TERMINAL = {SSEEventType.ERROR, SSEEventType.DONE}
+
+        if config.use_new_orchestrator:
+            # ── 新路径：ResearchSession 异步状态机 ──────────────────────
+            from core.session import ResearchSession
+
+            logger.info("Streaming research via new orchestrator (ResearchSession)")
+            session = ResearchSession(payload.topic, config)
+
+            async def event_iterator() -> Any:
+                try:
+                    async for event in session.run():
+                        yield _sse(event)
+                        if event.get("type") in _TERMINAL:
+                            return
+                except Exception as exc:  # pragma: no cover - defensive guardrail
+                    logger.exception("Streaming research failed (new orchestrator)")
+                    yield _sse({"type": SSEEventType.ERROR, "detail": str(exc)})
+        else:
+            # ── 旧路径：DeepResearchAgent.run_stream（默认）─────────────
             try:
-                for event in agent.run_stream(payload.topic):
-                    yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
-                    if event.get("type") in {SSEEventType.ERROR, SSEEventType.DONE}:
-                        return
-            except Exception as exc:  # pragma: no cover - defensive guardrail
-                logger.exception("Streaming research failed")
-                error_payload = {"type": SSEEventType.ERROR, "detail": str(exc)}
-                yield f"data: {json.dumps(error_payload, ensure_ascii=False)}\n\n"
+                agent = DeepResearchAgent(config=config)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+            def event_iterator() -> Iterator[str]:
+                try:
+                    for event in agent.run_stream(payload.topic):
+                        yield _sse(event)
+                        if event.get("type") in _TERMINAL:
+                            return
+                except Exception as exc:  # pragma: no cover - defensive guardrail
+                    logger.exception("Streaming research failed")
+                    yield _sse({"type": SSEEventType.ERROR, "detail": str(exc)})
 
         return StreamingResponse(
             event_iterator(),
