@@ -1,18 +1,346 @@
-:root {
-  color: #1a1a1a;
-  background-color: #f6f6f6;
-  font-family: "Helvetica Neue", Arial, sans-serif;
-  line-height: 1.5;
+/* ============================================================
+   DeepResearch Design System — v3
+   Sapphire Ink palette · saturated · white surface
+   Airbnb-flavored spring motion · AI rainbow halo retained
+============================================================ */
+
+/* -------- Fonts (Roboto Flex + Noto Sans SC + Roboto Mono) -------- */
+@import url("https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;8..144,500;8..144,600;8..144,700&family=Noto+Sans+SC:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap");
+
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  font-feature-settings: "liga";
+  -webkit-font-feature-settings: "liga";
+  -webkit-font-smoothing: antialiased;
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+  user-select: none;
+}
+.material-symbols-outlined.filled { font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24; }
+
+/* Smooth rotation requires registered custom property */
+@property --halo-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
 }
 
-* {
-  box-sizing: border-box;
+:root {
+  /* ─────────────────────────────────────────────
+     SAPPHIRE INK PRIMITIVES
+     Deep saturated blue · electric cyan accent
+     Cool slate neutrals · vivid status colors
+     ───────────────────────────────────────────── */
+
+  /* Cool ink-tinted neutrals (the canvas) */
+  --neutral-0: #ffffff;       /* page bg */
+  --neutral-50: #f6f8fc;      /* card surface, ink-tinted */
+  --neutral-100: #eef1f7;     /* surface variant */
+  --neutral-200: #dfe5ef;     /* outline-variant */
+  --neutral-300: #c5cedd;     /* outline */
+  --neutral-400: #94a0b8;     /* disabled fg */
+  --neutral-500: #64718b;     /* on-surface variant low */
+  --neutral-600: #475569;     /* on-surface variant */
+  --neutral-700: #2f3a4f;     /* on-surface */
+  --neutral-800: #1c2436;     /* on-surface emphasis */
+  --neutral-900: #0a1124;     /* almost-black, ink */
+
+  /* Sapphire — primary (deep saturated indigo→blue) */
+  --primary-50:  #eaf1ff;
+  --primary-100: #d4e2ff;
+  --primary-200: #a8c3ff;
+  --primary-300: #7ba3ff;
+  --primary-400: #4c80f5;
+  --primary-500: #2563eb;     /* PRIMARY — vivid sapphire */
+  --primary-600: #1d4ed8;
+  --primary-700: #1e3a8a;     /* deep ink-blue */
+  --primary-800: #172554;
+  --primary-900: #0b1738;
+
+  /* Electric Cyan — secondary / accent for AI/data moments */
+  --secondary-50:  #e0f7ff;
+  --secondary-100: #b8edff;
+  --secondary-300: #67d9ff;
+  --secondary-500: #06b6d4;   /* SECONDARY — cyan-500 */
+  --secondary-700: #0e7490;
+  --secondary-900: #083344;
+
+  /* Sky-violet — tertiary (for "deep" depth accents) */
+  --tertiary-100: #e0e7ff;
+  --tertiary-300: #a5b4fc;
+  --tertiary-500: #6366f1;
+  --tertiary-700: #4338ca;
+
+  /* Status — saturated, readable on white */
+  --success-100: #d1fae5;
+  --success-500: #10b981;     /* emerald */
+  --success-700: #047857;
+  --warning-100: #fef3c7;
+  --warning-500: #f59e0b;     /* amber */
+  --warning-700: #b45309;
+  --danger-100:  #fee2e2;
+  --danger-500:  #ef4444;     /* red */
+  --danger-700:  #b91c1c;
+
+  /* ─────────────────────────────────────────────
+     SEMANTIC TOKENS (Material-flavored)
+     ───────────────────────────────────────────── */
+
+  /* Surface system */
+  --bg-page: var(--neutral-0);
+  --surface: var(--neutral-50);
+  --surface-2: var(--neutral-100);
+  --surface-container: var(--neutral-100);
+  --surface-container-high: #e6ecf6;
+  --on-surface: var(--neutral-800);
+  --on-surface-strong: var(--neutral-900);
+  --on-surface-muted: var(--neutral-600);
+  --on-surface-faint: var(--neutral-500);
+  --on-surface-inverse: var(--neutral-0);
+
+  /* Primary set */
+  --primary: var(--primary-500);
+  --primary-hover: var(--primary-600);
+  --primary-pressed: var(--primary-700);
+  --on-primary: var(--neutral-0);
+  --primary-container: var(--primary-100);
+  --on-primary-container: var(--primary-700);
+
+  /* Secondary set */
+  --secondary: var(--secondary-500);
+  --on-secondary: var(--neutral-0);
+  --secondary-container: var(--secondary-100);
+  --on-secondary-container: var(--secondary-700);
+
+  /* Outline / divider */
+  --outline: var(--neutral-300);
+  --outline-variant: var(--neutral-200);
+  --divider: var(--neutral-200);
+
+  /* Status semantic */
+  --bg-success: var(--success-100);
+  --fg-success: var(--success-700);
+  --bg-warning: var(--warning-100);
+  --fg-warning: var(--warning-700);
+  --bg-danger: var(--danger-100);
+  --fg-danger: var(--danger-700);
+  --bg-info: var(--primary-100);
+  --fg-info: var(--primary-700);
+
+  /* Shadows — cool ink-tinted, slightly more pronounced */
+  --elev-0: none;
+  --elev-1: 0 1px 2px rgba(10, 17, 36, 0.06), 0 1px 3px rgba(10, 17, 36, 0.05);
+  --elev-2: 0 1px 2px rgba(10, 17, 36, 0.06), 0 4px 10px rgba(10, 17, 36, 0.07);
+  --elev-3: 0 4px 10px rgba(10, 17, 36, 0.08), 0 2px 4px rgba(10, 17, 36, 0.06);
+  --elev-4: 0 8px 20px rgba(10, 17, 36, 0.10), 0 2px 4px rgba(10, 17, 36, 0.06);
+  --elev-5: 0 20px 40px rgba(10, 17, 36, 0.14), 0 6px 12px rgba(10, 17, 36, 0.08);
+
+  /* Focus ring — uses primary tone */
+  --focus-ring: 0 0 0 3px rgba(37, 99, 235, 0.32);
+
+  /* Radii — Material 3 shape scale */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 28px;
+  --radius-pill: 999px;
+
+  /* Spacing — 4px base */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ─────────────────────────────────────────────
+     MOTION — Airbnb-flavored spring system
+     Use --ease-spring (overshoots a hair, then settles)
+     for entrances, taps, and reveals.
+     ───────────────────────────────────────────── */
+  --ease-standard:    cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized:  cubic-bezier(0.2, 0, 0, 1);
+  --ease-decelerated: cubic-bezier(0, 0, 0, 1);
+  --ease-spring:      cubic-bezier(0.34, 1.56, 0.64, 1);  /* gentle overshoot — Airbnb signature */
+  --ease-spring-soft: cubic-bezier(0.5, 1.25, 0.5, 1);    /* softer settle */
+  --ease-bounce:      cubic-bezier(0.68, -0.55, 0.27, 1.55); /* anticipation + overshoot */
+
+  --dur-instant: 100ms;
+  --dur-short:   180ms;
+  --dur-medium:  260ms;
+  --dur-long:    420ms;
+  --dur-xlong:   620ms;
+  --dur-halo:    4s;
+
+  /* ─────────────────────────────────────────────
+     AI HALO — rotating soft-rainbow conic gradient
+     Slightly more saturated stops than v2.
+     ───────────────────────────────────────────── */
+  --halo-stops:
+    #ff6b9d 0deg,
+    #ffa94d 51deg,
+    #ffd93d 102deg,
+    #6dd66d 153deg,
+    #4dd0e1 204deg,
+    #5b8def 255deg,
+    #9b6dff 306deg,
+    #ff6b9d 360deg;
+
+  /* ─────────────────────────────────────────────
+     TYPOGRAPHY
+     Roboto Flex (Latin) + Noto Sans SC (CJK)
+     ───────────────────────────────────────────── */
+  --font-sans: "Roboto Flex", "Noto Sans SC", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", "PingFang SC", "Microsoft YaHei", Roboto, sans-serif;
+  --font-mono: "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --type-display: 32px;
+  --type-headline: 22px;
+  --type-title: 18px;
+  --type-subtitle: 16px;
+  --type-body-lg: 15px;
+  --type-body: 14px;
+  --type-label: 13px;
+  --type-caption: 12px;
+  --type-mono: 13px;
+
+  --leading-tight: 1.25;
+  --leading-snug: 1.4;
+  --leading-base: 1.55;
+  --leading-relaxed: 1.7;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --tracking-wide: 0.4px;
+  --tracking-tight: -0.01em;
 }
+
+/* ─────────────────────────────────────────────
+   SEMANTIC ELEMENT STYLES
+   ───────────────────────────────────────────── */
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--type-body);
+  line-height: var(--leading-base);
+  color: var(--on-surface);
+  background: var(--bg-page);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "ss01", "cv11";
 }
 
-#app {
-  min-height: 100vh;
+h1, h2, h3, h4, h5, h6 { margin: 0; color: var(--on-surface-strong); font-weight: var(--weight-semibold); }
+h1 { font-size: var(--type-display); line-height: var(--leading-tight); letter-spacing: var(--tracking-tight); }
+h2 { font-size: var(--type-headline); line-height: var(--leading-snug); }
+h3 { font-size: var(--type-title); line-height: var(--leading-snug); }
+h4 { font-size: var(--type-subtitle); line-height: var(--leading-snug); font-weight: var(--weight-medium); }
+
+p { margin: 0; color: var(--on-surface); line-height: var(--leading-base); }
+.meta, .muted { color: var(--on-surface-muted); font-size: var(--type-label); }
+.eyebrow {
+  font-size: var(--type-caption);
+  font-weight: var(--weight-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--on-surface-muted);
 }
+
+code, pre, .mono {
+  font-family: var(--font-mono);
+  font-size: var(--type-mono);
+  line-height: var(--leading-relaxed);
+}
+
+/* ─────────────────────────────────────────────
+   AI HALO — rotating soft rainbow border
+   ───────────────────────────────────────────── */
+.ai-halo {
+  position: relative;
+  display: inline-flex;
+  border-radius: var(--radius-pill);
+  isolation: isolate;
+}
+.ai-halo::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  padding: 4px;
+  background: conic-gradient(from var(--halo-angle, 0deg), var(--halo-stops));
+  -webkit-mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  z-index: -1;
+  opacity: 0.7;
+  transition: opacity var(--dur-medium) var(--ease-standard);
+}
+.ai-halo::after {
+  content: "";
+  position: absolute;
+  inset: -12px;
+  border-radius: inherit;
+  background: conic-gradient(from var(--halo-angle, 0deg), var(--halo-stops));
+  filter: blur(18px);
+  z-index: -2;
+  opacity: 0;
+  transition: opacity var(--dur-medium) var(--ease-standard);
+}
+.ai-halo.active::before,
+.ai-halo:hover::before { opacity: 1; }
+.ai-halo.active::after { opacity: 0.8; }
+
+.ai-halo.active::before,
+.ai-halo.active::after {
+  animation: aiHaloSpin var(--dur-halo) linear infinite;
+}
+
+@keyframes aiHaloSpin {
+  to { --halo-angle: 360deg; }
+}
+
+/* ─────────────────────────────────────────────
+   SPRING UTILITY ANIMATIONS
+   Drop these classes on any element for the
+   Airbnb-flavored entrance.
+   ───────────────────────────────────────────── */
+@keyframes drFadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes drPopIn {
+  0%   { opacity: 0; transform: scale(0.85); }
+  60%  { opacity: 1; transform: scale(1.04); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes drBounceIn {
+  0%   { opacity: 0; transform: translateY(14px) scale(0.94); }
+  55%  { opacity: 1; transform: translateY(-3px) scale(1.02); }
+  80%  { transform: translateY(1px) scale(0.995); }
+  100% { transform: translateY(0) scale(1); }
+}
+.dr-fade-up { animation: drFadeUp var(--dur-long) var(--ease-spring-soft) both; }
+.dr-pop     { animation: drPopIn  var(--dur-long) var(--ease-spring)      both; }
+.dr-bounce  { animation: drBounceIn var(--dur-xlong) var(--ease-spring)   both; }
