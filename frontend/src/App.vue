@@ -1152,7 +1152,15 @@ const goBack = () => {
 };
 
 const startNewResearch = () => {
+  // 研究进行中时，开始新研究会中断当前研究并清空其进度。
+  // 必须先确认，避免误点导致正在进行的研究从界面消失且无法找回。
   if (loading.value) {
+    const confirmed = window.confirm(
+      "当前研究仍在进行中。开始新研究会中断当前研究、清空其进度且无法恢复，确定要继续吗？"
+    );
+    if (!confirmed) {
+      return;
+    }
     cancelResearch();
   }
   resetWorkflowState();
