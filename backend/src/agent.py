@@ -114,7 +114,6 @@ class DeepResearchAgent:
         self.planner = PlannerAgent(planner_agent, self.config)
         self.summarizer = SummarizerAgent(summarizer_factory, self.config)
         self.writer = WriterAgent(writer_agent, self.config, vector_store=self.vector_store)
-        self.reporting = self.writer  # 向后兼容
 
         # ── 反思 Agent（可选）────────────────────────────────────────────
         if self.config.enable_reflection:

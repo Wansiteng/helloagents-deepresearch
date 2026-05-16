@@ -1,12 +1,9 @@
 [project]
-name = "helloagents-deep-researcher"
+name = "deepresearch-backend"
 version = "0.0.1"
-description = "Fully local web research and summarization assistant powered by HelloAgents."
-authors = [
-    { name = "Lance Martin" }
-]
-readme = "README.md"
-license = { text = "MIT" }
+description = "Privacy-first, local-only deep research assistant. See ../docs/POSITIONING.md."
+readme = "../README.md"
+license = "MIT"
 requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.115.0",
@@ -22,20 +19,17 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["mypy>=1.11.1", "ruff>=0.6.1"]
+dev = [
+    "mypy>=1.11.1",
+    "ruff>=0.6.1",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+]
 
-[build-system]
-requires = ["setuptools>=73.0.0", "wheel"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools]
-packages = ["src"]
-
-[tool.setuptools.package-dir]
-"" = "src"
-
-[tool.setuptools.package-data]
-"*" = ["py.typed"]
+# This is an application, not an installable library — `src/` is added to
+# sys.path at runtime by main.py / conftest.py rather than packaged.
+[tool.uv]
+package = false
 
 [tool.ruff]
 lint.select = [
@@ -64,4 +58,14 @@ convention = "google"
 [dependency-groups]
 dev = [
     "ruff>=0.12.7",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integration: tests that hit external services (LLM, network); opt-in with -m integration",
+]
+addopts = "-m 'not integration'"
+asyncio_mode = "auto"

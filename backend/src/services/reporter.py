@@ -268,9 +268,3 @@ class WriterAgent:
             if task.sources_summary:
                 parts.append(f"**任务 {task.id}《{task.title}》**\n{task.sources_summary}")
         return "\n\n".join(parts) if parts else "暂无来源信息"
-
-
-# ── 向后兼容别名 ───────────────────────────────────────────────────────
-#: ``ReportingService`` 已重命名为 ``WriterAgent``；此别名保持导入向后兼容。
-ReportingService = WriterAgent
-

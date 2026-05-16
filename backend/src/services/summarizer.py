@@ -153,8 +153,3 @@ class SummarizerAgent:
             f"{build_note_guidance(task)}\n"
             "请按照以上协作要求先同步笔记，然后返回一份面向用户的 Markdown 总结（仍遵循任务总结模板）。"
         )
-
-
-# ── 向后兼容别名 ────────────────────────────────────────────────────────────
-#: ``SummarizationService`` 已重命名为 ``SummarizerAgent``；此别名保持导入向后兼容。
-SummarizationService = SummarizerAgent

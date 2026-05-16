@@ -257,8 +257,3 @@ class PlannerAgent:
             payload[key.strip()] = value.strip().strip('"').strip("'")
 
         return payload or None
-
-
-# ── 向后兼容别名 ───────────────────────────────────────────────────────
-#: ``PlanningService`` 已重命名为 ``PlannerAgent``；此别名保持导入向后兼容。
-PlanningService = PlannerAgent
