@@ -15,6 +15,12 @@
 - `backend/.env.example` 新增 `LOCAL_PROXY_URL` 配置项
 - `backend/tests/integration/test_qwen3_smoke.py`：pytest 化的 Qwen3 集成 smoke test，标记 `@pytest.mark.integration` 默认跳过
 - `pyproject.toml` dev 依赖加入 `pytest` 与 `pytest-asyncio`，配置 `integration` marker
+- **M2 / PR-1：core 抽象层**（不接入主流程，纯增量）
+  - `backend/src/core/llm.py`：provider 无关的 `LLMClient` 协议 + `OpenAICompatibleClient`（基于 `openai.AsyncOpenAI`，支持 native function calling，含 `from_config` 过渡适配器）
+  - `backend/src/core/knowledge.py`：`KnowledgeSource` 协议 + `KnowledgeQuery` / `KnowledgeChunk`
+  - `backend/src/core/sources/web.py`、`vector_memory.py`：包装现有 `services/search.py`、`services/vector_store.py` 的两个知识源
+  - `backend/tests/unit/test_llm_client.py`、`test_knowledge_source.py`：纯 unit 测试（mock，无网络）
+  - `backend/tests/integration/test_core_live.py`：真实 Ollama smoke test（默认跳过）
 
 ### Removed
 - `backend/test_qwen3.py`（旧的 `__main__` 风格集成脚本，已迁移到 pytest）
