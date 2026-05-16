@@ -227,9 +227,13 @@ class LLMClient(Protocol):
     async def chat_stream(
         self,
         messages: list[LLMMessage],
-        tools: list[dict] | None = None,
-    ) -> AsyncIterator[LLMMessage]: ...
+        temperature: float = 0.0,
+    ) -> AsyncIterator[str]: ...   # 只 yield content 增量；流式+工具调用见 PR-2
 ```
+
+> **PR-1 落地修正**：`chat_stream` 原设计返回 `AsyncIterator[LLMMessage]`，实现时
+> 改为 `AsyncIterator[str]`（content 增量）——流式场景前端只消费文本片段，
+> 流式 + 工具调用的复杂度推迟到 PR-2。
 
 ```python
 # backend/src/core/knowledge.py
@@ -379,22 +383,25 @@ class ResearchSession:
 
 不能 big-bang 重写。每个 PR 都要保证旧路径仍可运行。
 
-### PR-1: 引入 core 抽象（不接入主流程）
+### PR-1: 引入 core 抽象（不接入主流程）— ✅ 已完成
 
 **目标**：把新接口骨架搭起来，跑通 unit test，但不接入 `/research/stream`。
 
 新增：
 - `backend/src/core/__init__.py`
-- `backend/src/core/llm.py` —— `LLMClient` protocol + `OpenAICompatibleClient` 实现（包装 openai SDK）
-- `backend/src/core/knowledge.py` —— `KnowledgeSource` protocol
-- `backend/src/core/sources/web.py` —— web search 实现（包装现有 `services/search.py`）
-- `backend/src/core/sources/vector_memory.py` —— 向量记忆（包装现有 `services/vector_store.py`）
-- `backend/tests/unit/test_llm_client.py`
-- `backend/tests/unit/test_knowledge_source.py`
+- `backend/src/core/llm.py` —— `LLMClient` protocol + `OpenAICompatibleClient` 实现（基于 `openai.AsyncOpenAI`）
+- `backend/src/core/knowledge.py` —— `KnowledgeSource` protocol + `KnowledgeQuery` / `KnowledgeChunk`
+- `backend/src/core/sources/web.py` —— `WebSearchSource`（包装现有 `services/search.py`）
+- `backend/src/core/sources/vector_memory.py` —— `VectorMemorySource`（包装现有 `services/vector_store.py`）
+- `backend/tests/unit/test_llm_client.py`、`backend/tests/unit/test_knowledge_source.py`
+- `backend/tests/integration/test_core_live.py`（可选 live smoke test）
 
 不动：所有现有文件。
 
 **验收**：unit test 全绿；`uv run python src/main.py` 行为不变。
+
+> 落地说明：core 接口确定为 **async**；`OpenAICompatibleClient` 提供 `from_config()`
+> 过渡期适配器；`chat_stream` 返回 `AsyncIterator[str]`（见 2.3 节修正注）。
 
 ---
 
