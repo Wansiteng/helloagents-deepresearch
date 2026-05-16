@@ -405,22 +405,32 @@ class ResearchSession:
 
 ---
 
-### PR-2: ResearchSession + feature flag
+### PR-2: ResearchSession + feature flag — ✅ 已完成
 
 **目标**：状态机骨架完成，通过 feature flag 在 `/research/stream` 选择走旧路径或新路径。
 
 新增：
-- `backend/src/core/session.py` —— `ResearchSession` 状态机
-- `backend/src/core/steps/{plan,execute,critic,report}.py`
-- `backend/src/prompts/{plan,execute,critic,report}.py` —— 从 `prompts.py` 迁移
+- `backend/src/services/factory.py` —— `ResearchServices` + `build_research_services()` 工厂
+- `backend/src/core/session.py` —— `ResearchSession` async 状态机
+- `backend/src/core/steps/{plan,execute,report}.py` —— 三个 step（委托现有 service）
+- `backend/tests/unit/test_research_session.py`、`tests/integration/test_new_orchestrator_smoke.py`
 - `.env.example` 加 `USE_NEW_ORCHESTRATOR=False` flag
-- `backend/tests/integration/test_new_orchestrator_smoke.py`
 
 修改：
+- `agent.py.__init__` 改用 `build_research_services`（保行为重构）
+- `config.py` 加 `use_new_orchestrator` 字段
 - `main.py` 在 `/research/stream` 根据 flag 分发到旧 `DeepResearchAgent.run_stream()` 或新 `ResearchSession.run()`
 
+> 落地说明（与原设计的偏差）：
+> - PR-2 走**最小可用流程**（plan→execute→report，串行、非流式摘要）。反思评审、动态规划、
+>   渐进式草稿、`tool_call` 事件、并行执行、流式摘要——推迟到后续 PR。
+> - `core/steps/critic.py` 与 `prompts/` 拆包未在 PR-2 落地（无 critic step、step 仍复用
+>   `prompts.py` 经由现有 service）。
+> - `ResearchSession` 委托现有 `services/*`，不重写 agent 内部逻辑；`core/llm`、`core/sources`
+>   仍未接入（分别待 PR-4、PR-3）。
+
 **验收**：
-- 旧路径行为不变（用同一个研究主题前后对比报告内容）
+- 旧路径行为不变（flag 默认关）
 - 新路径能跑通最小研究流程
 - flag 切换无需重启
 

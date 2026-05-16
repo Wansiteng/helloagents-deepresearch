@@ -21,6 +21,12 @@
   - `backend/src/core/sources/web.py`、`vector_memory.py`：包装现有 `services/search.py`、`services/vector_store.py` 的两个知识源
   - `backend/tests/unit/test_llm_client.py`、`test_knowledge_source.py`：纯 unit 测试（mock，无网络）
   - `backend/tests/integration/test_core_live.py`：真实 Ollama smoke test（默认跳过）
+- **M2 / PR-2：ResearchSession 状态机 + feature flag**
+  - `backend/src/services/factory.py`：`build_research_services()` 工厂，统一构造 service 层；`agent.py.__init__` 改用之（保行为重构）
+  - `backend/src/core/session.py` + `core/steps/{plan,execute,report}.py`：新的 async 状态机编排器，跑通最小研究流程（plan→execute→report），委托现有 service
+  - `config.py` 新增 `use_new_orchestrator` 开关；`/research/stream` 按 flag 分发新旧编排器（默认走旧路径）
+  - `.env.example` 新增 `USE_NEW_ORCHESTRATOR`
+  - `backend/tests/unit/test_research_session.py`、`tests/integration/test_new_orchestrator_smoke.py`
 
 ### Removed
 - `backend/test_qwen3.py`（旧的 `__main__` 风格集成脚本，已迁移到 pytest）

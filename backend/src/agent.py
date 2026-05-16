@@ -10,27 +10,13 @@ from queue import Empty, Queue
 from threading import Lock, Semaphore, Thread
 from typing import Any, Callable, Iterator, Optional
 
-from hello_agents import HelloAgentsLLM, ToolAwareSimpleAgent
-from hello_agents.tools import ToolRegistry
-
-from agents.robust_agent import RobustToolAwareAgent
+from hello_agents import HelloAgentsLLM
 
 from config import Configuration
-from prompts import (
-    open_source_model_constraint_prompt,
-    report_writer_instructions,
-    task_summarizer_instructions,
-    todo_planner_system_prompt,
-)
 from models import SummaryState, SummaryStateOutput, TodoItem
-from services.planner import PlannerAgent
-from services.reflection import CriticAgent
-from services.reporter import WriterAgent
+from services.factory import build_llm, build_research_services
 from services.search import dispatch_search_with_retry, prepare_research_context
-from services.summarizer import SummarizerAgent
-from services.tool_events import ToolCallTracker
 from services.vector_store import VectorStore
-from tool_registry import AgentToolRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -61,75 +47,25 @@ class DeepResearchAgent:
     def __init__(self, config: Configuration | None = None) -> None:
         """Initialise the coordinator with configuration and shared tools."""
         self.config = config or Configuration.from_env()
-        self.llm = self._init_llm()
 
-        self.tool_registry = AgentToolRegistry(self.config)
+        # Service construction lives in services.factory so the new
+        # ResearchSession orchestrator can build the identical bundle.
+        services = build_research_services(self.config)
+        self.llm = services.llm
+        self.tool_registry = services.tool_registry
+        self.vector_store: Optional[VectorStore] = services.vector_store
+        self._tool_tracker = services.tool_tracker
+        self.planner = services.planner
+        self.summarizer = services.summarizer
+        self.writer = services.writer
+        self.critic = services.critic
 
-        # ── RAG 向量记忆层（可选）──────────────────────────────────────
-        self.vector_store: Optional[VectorStore] = None
-        if self.config.use_vector_store:
-            try:
-                self.vector_store = VectorStore(
-                    workspace=self.config.vector_store_path,
-                    embedding_model=self.config.embedding_model,
-                    ollama_base_url=self.config.ollama_base_url,
-                    chunk_size=self.config.vector_chunk_size,
-                    chunk_overlap=self.config.vector_chunk_overlap,
-                )
-                logger.info(
-                    "VectorStore 已启用: path=%s model=%s",
-                    self.config.vector_store_path,
-                    self.config.embedding_model,
-                )
-            except Exception as exc:
-                logger.warning("VectorStore 初始化失败，将禁用向量记忆: %s", exc)
-                self.vector_store = None
-
-        self._tool_tracker = ToolCallTracker(
-            self.config.notes_workspace if self.config.enable_notes else None
-        )
         self._tool_event_sink_enabled = False
         self._state_lock = Lock()
 
         # ── LLM 并发信号量（默认 1，可通过 llm_concurrency 配置）────────
         # Ollama 默认单请求；配合 OLLAMA_NUM_PARALLEL=N 可提升为 N。
-        self._llm_semaphore = Semaphore(max(1, self.config.llm_concurrency))
-
-        # ── 三个核心 Agent + CriticAgent ───────────────────────────────
-        planner_agent = self._create_tool_aware_agent(
-            name="研究规划专家",
-            system_prompt=todo_planner_system_prompt.strip(),
-        )
-        writer_agent = self._create_tool_aware_agent(
-            name="报告撰写专家",
-            system_prompt=report_writer_instructions.strip(),
-        )
-        summarizer_factory: Callable[[], ToolAwareSimpleAgent] = (
-            lambda: self._create_tool_aware_agent(
-                name="任务总结专家",
-                system_prompt=task_summarizer_instructions.strip(),
-            )
-        )
-
-        self.planner = PlannerAgent(planner_agent, self.config)
-        self.summarizer = SummarizerAgent(summarizer_factory, self.config)
-        self.writer = WriterAgent(writer_agent, self.config, vector_store=self.vector_store)
-
-        # ── 反思 Agent（可选）────────────────────────────────────────────
-        if self.config.enable_reflection:
-            from prompts import reflection_instructions  # noqa: F401 – 验证提示词可导入
-            critic_factory: Callable[[], ToolAwareSimpleAgent] = (
-                lambda: self._create_tool_aware_agent(
-                    name="报告质量评审专家",
-                    system_prompt=(
-                        "你是一名专业的研究质量评审专家，擅长识别研究报告中的不足与空白。"
-                        "请对给定的研究报告进行客观评审，输出结构化 JSON 格式的评估结果。"
-                    ),
-                )
-            )
-            self.critic: Optional[CriticAgent] = CriticAgent(critic_factory, self.config)
-        else:
-            self.critic = None
+        self._llm_semaphore = Semaphore(services.llm_concurrency)
 
         self._last_search_notices: list[str] = []
 
@@ -138,61 +74,7 @@ class DeepResearchAgent:
     # ------------------------------------------------------------------
     def _init_llm(self) -> HelloAgentsLLM:
         """Instantiate HelloAgentsLLM following configuration preferences."""
-        llm_kwargs: dict[str, Any] = {
-            "temperature": 0.0,
-            "timeout": self.config.llm_timeout,
-        }
-
-        model_id = self.config.llm_model_id or self.config.local_llm
-        if model_id:
-            llm_kwargs["model"] = model_id
-
-        provider = (self.config.llm_provider or "").strip()
-        if provider:
-            llm_kwargs["provider"] = provider
-
-        if provider == "ollama":
-            llm_kwargs["base_url"] = self.config.sanitized_ollama_url()
-            llm_kwargs["api_key"] = self.config.llm_api_key or "ollama"
-        elif provider == "lmstudio":
-            llm_kwargs["base_url"] = self.config.lmstudio_base_url
-            llm_kwargs["api_key"] = self.config.llm_api_key or "lm-studio"
-        else:
-            if self.config.llm_base_url:
-                llm_kwargs["base_url"] = self.config.llm_base_url
-            if self.config.llm_api_key:
-                llm_kwargs["api_key"] = self.config.llm_api_key
-
-        return HelloAgentsLLM(**llm_kwargs)
-
-    def _create_tool_aware_agent(self, *, name: str, system_prompt: str) -> ToolAwareSimpleAgent:
-        """Instantiate a RobustToolAwareAgent sharing the unified tool registry."""
-        ha_registry = self.tool_registry.hello_agents_registry
-
-        effective_prompt = system_prompt
-        if self.config.use_open_source_mode:
-            effective_prompt = system_prompt + "\n" + open_source_model_constraint_prompt
-            logger.debug("open_source_mode: injecting constraint prompt for agent '%s'", name)
-
-        if self.config.no_think_mode:
-            effective_prompt = "/no_think\n" + effective_prompt
-            logger.debug("no_think_mode: injecting /no_think directive for agent '%s'", name)
-
-        max_retries = (
-            self.config.open_source_model_max_retries
-            if self.config.use_open_source_mode
-            else 0
-        )
-
-        return RobustToolAwareAgent(
-            name=name,
-            llm=self.llm,
-            system_prompt=effective_prompt,
-            enable_tool_calling=ha_registry is not None,
-            tool_registry=ha_registry,
-            tool_call_listener=self._tool_tracker.record,
-            self_correction_max_retries=max_retries,
-        )
+        return build_llm(self.config)
 
     def _set_tool_event_sink(self, sink: Callable[[dict[str, Any]], None] | None) -> None:
         """Enable or disable immediate tool event callbacks."""
