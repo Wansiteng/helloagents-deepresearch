@@ -51,6 +51,10 @@ class ResearchServices:
     writer: WriterAgent
     critic: CriticAgent | None
     llm_concurrency: int
+    knowledge_sources: list[Any]
+    """Enabled :class:`~core.knowledge.KnowledgeSource` instances (web, vault, ...).
+    Consumed by the new ``ResearchSession`` orchestrator; ignored by the legacy
+    ``DeepResearchAgent``."""
 
 
 def build_llm(config: Configuration) -> HelloAgentsLLM:
@@ -186,6 +190,8 @@ def build_research_services(config: Configuration) -> ResearchServices:
 
         critic = CriticAgent(critic_factory, config)
 
+    knowledge_sources = _build_knowledge_sources(config)
+
     return ResearchServices(
         config=config,
         llm=llm,
@@ -197,4 +203,28 @@ def build_research_services(config: Configuration) -> ResearchServices:
         writer=writer,
         critic=critic,
         llm_concurrency=max(1, config.llm_concurrency),
+        knowledge_sources=knowledge_sources,
     )
+
+
+def _build_knowledge_sources(config: Configuration) -> list[Any]:
+    """Construct the enabled knowledge sources for the new orchestrator.
+
+    Web search is always enabled. The Obsidian vault source is added only when
+    ``OBSIDIAN_VAULT_PATH`` is configured.
+    """
+    from core.sources.web import WebSearchSource
+
+    sources: list[Any] = [WebSearchSource(config)]
+
+    vault_path = (config.obsidian_vault_path or "").strip()
+    if vault_path:
+        from core.sources.obsidian import ObsidianVaultSource
+
+        try:
+            sources.append(ObsidianVaultSource.from_config(config))
+            logger.info("Obsidian 知识源已启用: vault=%s", vault_path)
+        except Exception as exc:
+            logger.warning("Obsidian 知识源初始化失败，已跳过: %s", exc)
+
+    return sources

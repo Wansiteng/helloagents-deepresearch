@@ -436,23 +436,31 @@ class ResearchSession:
 
 ---
 
-### PR-3: 接入 Obsidian + LocalPDF 知识源（实现差异化价值）
+### PR-3: 接入 Obsidian 知识源 + 多源 fan-out — ✅ 已完成
 
-**目标**：第一次让本项目跟 ChatGPT/Claude Deep Research 出现真正差异。
+**目标**：第一次让本项目跟 ChatGPT/Claude Deep Research 出现真正差异——能读用户本地 Obsidian vault。
 
 新增：
-- `backend/src/core/sources/obsidian.py` —— 读取 vault 路径，按 frontmatter / link / tag 检索
-- `backend/src/core/sources/local_pdf.py` —— 索引一个目录下所有 PDF，向量化 + 全文检索
-- `.env.example` 加 `OBSIDIAN_VAULT_PATH`、`LOCAL_PDF_PATH`
-- 前端配置面板加「数据源」开关
+- `backend/src/core/sources/obsidian.py` —— `ObsidianVaultSource`，vault 语义检索（复用 `VectorStore`，mtime 增量索引）
+- `backend/src/core/knowledge.py::build_context` —— 多源 chunk → 提示词上下文
+- `backend/tests/unit/test_obsidian_source.py`、`tests/integration/test_obsidian_source_live.py`
+- `.env.example` 加 `OBSIDIAN_VAULT_PATH`、`OBSIDIAN_INDEX_PATH`
 
 修改：
-- `core/steps/execute.py` 的搜索阶段并发查询所有启用的 KnowledgeSource，结果合并
+- `core/steps/execute.py` 搜索阶段改为并发查询所有启用的 `KnowledgeSource`（web + obsidian），结果合并
+- `services/factory.py` 的 `ResearchServices` 加 `knowledge_sources` 字段
+- `config.py` 加 `obsidian_vault_path` / `obsidian_index_path`
+
+> 落地说明（与原设计的偏差）：
+> - PR-3 只做 **Obsidian**（语义检索）。本地 PDF 源（`local_pdf.py`）延后到后续小 PR。
+> - 检索方式为**全文语义检索**；frontmatter / `[[wikilink]]` / tag 结构化检索未做。
+> - 前端「数据源开关」延后；当前由 `OBSIDIAN_VAULT_PATH` env 驱动。
+> - 本轮首次把 PR-1 的 `KnowledgeSource` / `WebSearchSource` 接入主流程。
 
 **验收**：
-- 切到新 orchestrator + 启用 Obsidian 源
-- 输入研究主题，能看到引用来自本地 vault 的笔记
-- README 截图更新
+- 切到新 orchestrator + 设 `OBSIDIAN_VAULT_PATH`
+- 输入研究主题，报告能引用来自本地 vault 的笔记（`source=obsidian`）
+- 未设 vault 时退化为纯 web，行为同 PR-2
 
 ---
 

@@ -1,7 +1,11 @@
-"""Execute step — run search + summarization for each TODO item.
+"""Execute step — run multi-source retrieval + summarization for each TODO item.
 
-PR-2 minimal flow: tasks run sequentially and summaries are non-streaming.
-Parallel execution and token-level streaming are deferred (see plan).
+PR-3: the search phase fans out across every enabled knowledge source
+(web, Obsidian vault, ...) concurrently and merges the results.
+
+PR-2 minimal-flow constraints still apply: tasks run sequentially and summaries
+are non-streaming. Parallel task execution and token-level streaming are
+deferred.
 """
 
 from __future__ import annotations
@@ -10,9 +14,9 @@ import asyncio
 import logging
 from typing import Any, AsyncIterator
 
+from core.knowledge import KnowledgeChunk, KnowledgeQuery, build_context
 from models import SummaryState, TodoItem
 from services.factory import ResearchServices
-from services.search import dispatch_search_with_retry, prepare_research_context
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +35,25 @@ class ExecuteStep:
             async for event in self._run_task(state, task, index):
                 yield event
 
+    async def _gather_chunks(self, query: KnowledgeQuery) -> list[KnowledgeChunk]:
+        """Query every enabled knowledge source concurrently and merge results.
+
+        A single source failing (or returning nothing) never aborts the task —
+        the remaining sources still contribute.
+        """
+        sources = self._services.knowledge_sources
+        results = await asyncio.gather(
+            *(source.query(query) for source in sources),
+            return_exceptions=True,
+        )
+        chunks: list[KnowledgeChunk] = []
+        for source, result in zip(sources, results):
+            if isinstance(result, Exception):
+                logger.warning("知识源 '%s' 查询失败: %s", source.name, result)
+                continue
+            chunks.extend(result)
+        return chunks
+
     async def _run_task(
         self, state: SummaryState, task: TodoItem, step: int
     ) -> AsyncIterator[dict[str, Any]]:
@@ -48,26 +71,12 @@ class ExecuteStep:
         }
 
         try:
-            fallback_queries: list[str] = []
-            if self._config.search_retry_on_empty:
-                fallback_queries = [
-                    f"{task.title} {state.research_topic}",
-                    task.title,
-                ]
-
-            search_result, notices, answer_text, backend = await asyncio.to_thread(
-                dispatch_search_with_retry,
-                task.query,
-                self._config,
-                0,
-                fallback_queries,
+            query = KnowledgeQuery(
+                text=task.query, intent=task.intent, max_results=5
             )
-            task.notices = notices
-            for notice in notices:
-                if notice:
-                    yield {"type": "status", "message": notice, "step": step}
+            chunks = await self._gather_chunks(query)
 
-            if not search_result or not search_result.get("results"):
+            if not chunks:
                 task.status = "skipped"
                 yield {
                     "type": "task_status",
@@ -81,21 +90,20 @@ class ExecuteStep:
                 }
                 return
 
-            sources_summary, context = prepare_research_context(
-                search_result, answer_text, self._config
-            )
+            sources_summary, context = build_context(chunks)
             task.sources_summary = sources_summary
             state.web_research_results.append(context)
             state.sources_gathered.append(sources_summary)
             state.research_loop_count += 1
 
+            backends = ", ".join(sorted({chunk.source for chunk in chunks}))
             yield {
                 "type": "sources",
                 "task_id": task.id,
                 "latest_sources": sources_summary,
                 "raw_context": context,
                 "step": step,
-                "backend": backend,
+                "backend": backends,
                 "note_id": task.note_id,
                 "note_path": task.note_path,
             }

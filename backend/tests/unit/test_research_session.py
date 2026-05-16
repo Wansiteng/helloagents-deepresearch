@@ -1,11 +1,9 @@
 """Unit tests for core.session.ResearchSession — fake services, no network."""
 from __future__ import annotations
 
-import pytest
-
 from config import Configuration
+from core.knowledge import KnowledgeChunk
 from core.session import ResearchSession
-from core.steps import execute as execute_step
 from models import SummaryState, TodoItem
 from services.factory import ResearchServices
 
@@ -35,7 +33,34 @@ class _FakeWriter:
         return "# Final Report\n\nsynthesised content"
 
 
-def _services(config, tasks) -> ResearchServices:
+class _FakeSource:
+    """A minimal KnowledgeSource for tests."""
+
+    def __init__(self, name, chunks, *, is_local=False, fail=False):
+        self.name = name
+        self._chunks = chunks
+        self._is_local = is_local
+        self._fail = fail
+
+    @property
+    def is_local(self) -> bool:
+        return self._is_local
+
+    async def query(self, q):
+        if self._fail:
+            raise RuntimeError(f"source {self.name} boom")
+        return list(self._chunks)
+
+
+def _chunk(source="web", title="T", content="c"):
+    return KnowledgeChunk(
+        source=source, title=title, url_or_path="u", content=content
+    )
+
+
+def _services(config, tasks, sources=None) -> ResearchServices:
+    if sources is None:
+        sources = [_FakeSource("web", [_chunk()])]
     return ResearchServices(
         config=config,
         llm=None,
@@ -47,6 +72,7 @@ def _services(config, tasks) -> ResearchServices:
         writer=_FakeWriter(),
         critic=None,
         llm_concurrency=1,
+        knowledge_sources=sources,
     )
 
 
@@ -57,24 +83,6 @@ def _two_tasks() -> list[TodoItem]:
     ]
 
 
-@pytest.fixture
-def patched_search(monkeypatch):
-    """Patch the search helpers used by ExecuteStep with canned data."""
-
-    def fake_dispatch(query, config, loop_count, fallback_queries=None):
-        payload = {
-            "results": [{"title": "T", "url": "https://x", "content": "c"}],
-            "backend": "duckduckgo",
-        }
-        return payload, [], None, "duckduckgo"
-
-    def fake_prepare(search_result, answer_text, config):
-        return "sources summary", "context text"
-
-    monkeypatch.setattr(execute_step, "dispatch_search_with_retry", fake_dispatch)
-    monkeypatch.setattr(execute_step, "prepare_research_context", fake_prepare)
-
-
 async def _collect(session: ResearchSession) -> list[dict]:
     return [event async for event in session.run()]
 
@@ -82,7 +90,7 @@ async def _collect(session: ResearchSession) -> list[dict]:
 # ──────────────────────────────────────────────────────────────────────────────
 # Happy path
 # ──────────────────────────────────────────────────────────────────────────────
-async def test_run_emits_expected_event_sequence(patched_search):
+async def test_run_emits_expected_event_sequence():
     config = Configuration()
     session = ResearchSession("test topic", config, services=_services(config, _two_tasks()))
     events = await _collect(session)
@@ -94,14 +102,13 @@ async def test_run_emits_expected_event_sequence(patched_search):
     assert types[-1] == "done"
     assert types[-2] == "final_report"
 
-    # Each of the 2 tasks goes in_progress -> sources -> summary chunk -> completed
     assert types.count("sources") == 2
     assert types.count("task_summary_chunk") == 2
     statuses = [e["status"] for e in events if e["type"] == "task_status"]
     assert statuses == ["in_progress", "completed", "in_progress", "completed"]
 
 
-async def test_todo_list_event_shape(patched_search):
+async def test_todo_list_event_shape():
     config = Configuration()
     session = ResearchSession("topic", config, services=_services(config, _two_tasks()))
     events = await _collect(session)
@@ -113,7 +120,7 @@ async def test_todo_list_event_shape(patched_search):
     assert {"id", "title", "intent", "query", "status", "stream_token"} <= keys
 
 
-async def test_final_report_carries_report(patched_search):
+async def test_final_report_carries_report():
     config = Configuration()
     session = ResearchSession("topic", config, services=_services(config, _two_tasks()))
     events = await _collect(session)
@@ -123,7 +130,7 @@ async def test_final_report_carries_report(patched_search):
     assert session.state.structured_report == final["report"]
 
 
-async def test_summary_chunk_carries_task_summary(patched_search):
+async def test_summary_chunk_carries_task_summary():
     config = Configuration()
     session = ResearchSession("topic", config, services=_services(config, _two_tasks()))
     events = await _collect(session)
@@ -134,16 +141,53 @@ async def test_summary_chunk_carries_task_summary(patched_search):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Skipped path — search returns no results
+# Multi-source fan-out
 # ──────────────────────────────────────────────────────────────────────────────
-async def test_task_skipped_on_empty_search(monkeypatch):
-    monkeypatch.setattr(
-        execute_step,
-        "dispatch_search_with_retry",
-        lambda *a, **k: (None, [], None, "duckduckgo"),
-    )
+async def test_execute_step_merges_multiple_sources():
     config = Configuration()
-    session = ResearchSession("topic", config, services=_services(config, _two_tasks()))
+    sources = [
+        _FakeSource("web", [_chunk(source="web:duckduckgo", title="W")]),
+        _FakeSource("obsidian", [_chunk(source="obsidian", title="O")], is_local=True),
+    ]
+    session = ResearchSession(
+        "topic", config, services=_services(config, _two_tasks(), sources)
+    )
+    events = await _collect(session)
+    sources_events = [e for e in events if e["type"] == "sources"]
+
+    # backend field aggregates both source labels.
+    assert "web:duckduckgo" in sources_events[0]["backend"]
+    assert "obsidian" in sources_events[0]["backend"]
+    # Both sources' chunks appear in the merged context.
+    assert "W" in sources_events[0]["raw_context"]
+    assert "O" in sources_events[0]["raw_context"]
+
+
+async def test_one_failing_source_does_not_abort_task():
+    config = Configuration()
+    sources = [
+        _FakeSource("web", [], fail=True),
+        _FakeSource("obsidian", [_chunk(source="obsidian", title="O")], is_local=True),
+    ]
+    session = ResearchSession(
+        "topic", config, services=_services(config, _two_tasks(), sources)
+    )
+    events = await _collect(session)
+    statuses = [e["status"] for e in events if e["type"] == "task_status"]
+
+    # The working source still completes the task.
+    assert statuses == ["in_progress", "completed", "in_progress", "completed"]
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Skipped path — every source returns nothing
+# ──────────────────────────────────────────────────────────────────────────────
+async def test_task_skipped_when_no_chunks():
+    config = Configuration()
+    sources = [_FakeSource("web", [])]
+    session = ResearchSession(
+        "topic", config, services=_services(config, _two_tasks(), sources)
+    )
     events = await _collect(session)
     statuses = [e["status"] for e in events if e["type"] == "task_status"]
 
@@ -154,7 +198,7 @@ async def test_task_skipped_on_empty_search(monkeypatch):
 # ──────────────────────────────────────────────────────────────────────────────
 # Fallback — planner returns no tasks
 # ──────────────────────────────────────────────────────────────────────────────
-async def test_fallback_task_when_planner_empty(patched_search):
+async def test_fallback_task_when_planner_empty():
     config = Configuration()
     session = ResearchSession("topic", config, services=_services(config, []))
     events = await _collect(session)
