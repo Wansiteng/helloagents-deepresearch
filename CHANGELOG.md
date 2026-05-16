@@ -27,6 +27,12 @@
   - `config.py` 新增 `use_new_orchestrator` 开关；`/research/stream` 按 flag 分发新旧编排器（默认走旧路径）
   - `.env.example` 新增 `USE_NEW_ORCHESTRATOR`
   - `backend/tests/unit/test_research_session.py`、`tests/integration/test_new_orchestrator_smoke.py`
+- **M2 / PR-3：Obsidian vault 知识源 + 多源 fan-out**（立意首次落地为可跑功能）
+  - `backend/src/core/sources/obsidian.py`：`ObsidianVaultSource` —— 对本地 Obsidian vault 做语义检索（复用 `VectorStore`，mtime 增量索引，数据不出本机）
+  - `core/steps/execute.py` 改为并发查询所有启用的 `KnowledgeSource`（web + obsidian），结果合并；首次把 PR-1 的 `KnowledgeSource` 抽象接入主流程
+  - `core/knowledge.py` 新增 `build_context()`；`ResearchServices` 加 `knowledge_sources` 字段
+  - `config.py` / `.env.example` 新增 `OBSIDIAN_VAULT_PATH`、`OBSIDIAN_INDEX_PATH`（设了 vault 路径即启用）
+  - `backend/tests/unit/test_obsidian_source.py`、`tests/integration/test_obsidian_source_live.py`
 
 ### Removed
 - `backend/test_qwen3.py`（旧的 `__main__` 风格集成脚本，已迁移到 pytest）

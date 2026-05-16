@@ -211,6 +211,21 @@ class Configuration(BaseModel):
         ),
     )
 
+    # ── 知识源：Obsidian vault ────────────────────────────────────────────
+    obsidian_vault_path: Optional[str] = Field(
+        default=None,
+        title="Obsidian Vault Path",
+        description=(
+            "本地 Obsidian vault 目录路径。设置后，新编排器会把 vault 笔记"
+            "作为一个知识源参与研究检索（语义检索）。留空则不启用。"
+        ),
+    )
+    obsidian_index_path: str = Field(
+        default="./obsidian_index",
+        title="Obsidian Index Path",
+        description="Obsidian vault 语义索引（ChromaDB）与 mtime manifest 的存放目录。",
+    )
+
     # ── 编排器选择 ────────────────────────────────────────────────────────
     use_new_orchestrator: bool = Field(
         default=False,
@@ -284,6 +299,8 @@ class Configuration(BaseModel):
             "context_max_chars": os.getenv("CONTEXT_MAX_CHARS"),
             "summary_card_max_chars": os.getenv("SUMMARY_CARD_MAX_CHARS"),
             "use_new_orchestrator": os.getenv("USE_NEW_ORCHESTRATOR"),
+            "obsidian_vault_path": os.getenv("OBSIDIAN_VAULT_PATH"),
+            "obsidian_index_path": os.getenv("OBSIDIAN_INDEX_PATH"),
         }
 
         for key, value in env_aliases.items():
