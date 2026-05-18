@@ -1373,7 +1373,7 @@ textarea {
 
 select {
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364718b' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238696a0' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 16px center;
   padding-right: 40px;
@@ -1681,9 +1681,9 @@ select:focus {
 }
 
 @keyframes drPulse {
-  0%   { transform: scale(1);    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.55); }
-  50%  { transform: scale(1.25); box-shadow: 0 0 0 8px rgba(37, 99, 235, 0); }
-  100% { transform: scale(1);    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+  0%   { transform: scale(1);    box-shadow: 0 0 0 0 rgba(0, 128, 105, 0.55); }
+  50%  { transform: scale(1.25); box-shadow: 0 0 0 8px rgba(0, 128, 105, 0); }
+  100% { transform: scale(1);    box-shadow: 0 0 0 0 rgba(0, 128, 105, 0); }
 }
 
 /* ── Timeline ────────────────────────────────────────────── */
@@ -1775,9 +1775,9 @@ select:focus {
 }
 
 @keyframes drDotPulse {
-  0%       { box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.55); transform: scale(1); }
-  50%      { box-shadow: 0 0 0 6px rgba(6, 182, 212, 0); transform: scale(1.18); }
-  100%     { box-shadow: 0 0 0 0 rgba(6, 182, 212, 0); transform: scale(1); }
+  0%       { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.55); transform: scale(1); }
+  50%      { box-shadow: 0 0 0 6px rgba(37, 211, 102, 0); transform: scale(1.18); }
+  100%     { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0); transform: scale(1); }
 }
 
 .timeline-enter-active,
@@ -2221,8 +2221,8 @@ select:focus {
 }
 
 @keyframes glow {
-  0%   { box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.28); }
-  100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+  0%   { box-shadow: 0 0 0 3px rgba(0, 128, 105, 0.28); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 128, 105, 0); }
 }
 
 /* ── Tool calls ──────────────────────────────────────────── */
