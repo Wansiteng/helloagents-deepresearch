@@ -1357,7 +1357,7 @@ select {
   padding: 14px 16px;
   border-radius: var(--radius-md);
   border: 1px solid var(--outline);
-  background: #fff;
+  background: var(--surface-bright);
   color: var(--on-surface);
   font-size: 14px;
   font-family: inherit;
@@ -1589,7 +1589,7 @@ select:focus {
   gap: 8px;
   padding: 12px 16px;
   background: var(--bg-danger);
-  border: 1px solid #fecaca;
+  border: 1px solid var(--border-danger);
   border-radius: var(--radius-md);
   color: var(--fg-danger);
   font-size: 14px;
@@ -1608,7 +1608,7 @@ select:focus {
   line-height: var(--leading-base);
   color: var(--fg-warning);
   background: var(--bg-warning);
-  border: 1px solid #fde68a;
+  border: 1px solid var(--border-warning);
   border-radius: var(--radius-md);
 }
 
@@ -1985,14 +1985,14 @@ select:focus {
 .task-label.note-chip {
   background: var(--bg-success);
   color: var(--fg-success);
-  border-color: #a7f3d0;
+  border-color: var(--border-success);
 }
 
 .task-label.path-chip {
   max-width: 360px;
-  background: var(--tertiary-100);
-  color: var(--tertiary-700);
-  border-color: var(--tertiary-300);
+  background: var(--tertiary-container);
+  color: var(--on-tertiary-container);
+  border-color: var(--tertiary-outline);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2011,8 +2011,8 @@ select:focus {
 
 .chip-action {
   border: none;
-  background: var(--tertiary-300);
-  color: var(--tertiary-700);
+  background: var(--tertiary-container);
+  color: var(--on-tertiary-container);
   padding: 3px 8px;
   border-radius: var(--radius-sm);
   font-size: 11px;
@@ -2022,8 +2022,8 @@ select:focus {
 }
 
 .chip-action:hover {
-  background: var(--tertiary-500);
-  color: #fff;
+  background: var(--tertiary-outline);
+  color: var(--on-tertiary-container);
 }
 
 .task-notices {
@@ -2059,7 +2059,7 @@ select:focus {
   position: relative;
   padding: 18px;
   border-radius: var(--radius-lg);
-  background: #fff;
+  background: var(--surface-bright);
   border: 1px solid var(--outline-variant);
 }
 
@@ -2111,7 +2111,7 @@ select:focus {
   bottom: calc(100% + 12px);
   left: 50%;
   transform: translateX(-50%);
-  background: #fff;
+  background: var(--surface-bright);
   color: var(--on-surface);
   padding: 14px 16px;
   border-radius: var(--radius-lg);
@@ -2129,7 +2129,7 @@ select:focus {
   transform: translateX(-50%);
   border-width: 12px 10px 0 10px;
   border-style: solid;
-  border-color: #fff transparent transparent transparent;
+  border-color: var(--surface-bright) transparent transparent transparent;
   filter: drop-shadow(0 2px 3px rgba(10, 17, 36, 0.12));
 }
 
@@ -2212,7 +2212,7 @@ select:focus {
 }
 
 .report-block .block-pre {
-  background: #fff;
+  background: var(--surface-bright);
   max-height: 440px;
 }
 
@@ -2254,7 +2254,7 @@ select:focus {
 }
 
 .tool-entry {
-  background: #fff;
+  background: var(--surface-bright);
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-md);
   padding: 14px;
@@ -2445,7 +2445,7 @@ select:focus {
   font-weight: var(--weight-medium);
   color: var(--on-surface-strong) !important;
   padding: 14px 16px;
-  background: #fff;
+  background: var(--surface-bright);
   border-radius: var(--radius-md);
   border-left: 3px solid var(--primary);
 }
@@ -2524,7 +2524,7 @@ select:focus {
   background: var(--bg-danger);
   padding: 8px 10px;
   border-radius: var(--radius-sm);
-  border: 1px solid #fecaca;
+  border: 1px solid var(--border-danger);
   margin: 0;
 }
 
@@ -2569,7 +2569,7 @@ select:focus {
 }
 
 .history-toggle-btn:hover {
-  background: #dbe4f1;
+  background: var(--surface-container-highest);
   box-shadow: var(--elev-2);
   transform: translateY(-1px) scale(1.04);
 }

@@ -36,6 +36,9 @@
 }
 
 :root {
+  /* Follow the OS light/dark preference for native UI (scrollbars, controls) */
+  color-scheme: light dark;
+
   /* ─────────────────────────────────────────────
      SAPPHIRE INK PRIMITIVES
      Deep saturated blue · electric cyan accent
@@ -148,6 +151,16 @@
   /* Focus ring — uses primary tone */
   --focus-ring: 0 0 0 3px rgba(37, 99, 235, 0.32);
 
+  /* Extended semantic tokens (consumed by component styles) */
+  --surface-bright: #ffffff;            /* inputs / nested blocks, brighter than --surface */
+  --surface-container-highest: #dbe4f1; /* FAB hover */
+  --border-success: #a7f3d0;
+  --border-warning: #fde68a;
+  --border-danger: #fecaca;
+  --tertiary-container: var(--tertiary-100);
+  --on-tertiary-container: var(--tertiary-700);
+  --tertiary-outline: var(--tertiary-300);
+
   /* Radii — Material 3 shape scale */
   --radius-xs: 4px;
   --radius-sm: 8px;
@@ -233,6 +246,87 @@
 
   --tracking-wide: 0.4px;
   --tracking-tight: -0.01em;
+}
+
+/* ─────────────────────────────────────────────
+   DARK THEME — auto, follows OS preference
+   Overrides only the SEMANTIC layer; every
+   component reads semantic tokens, so the whole
+   app re-themes from this one block.
+
+   Palette follows Material Design 3 dark guidance:
+   · surfaces are dark desaturated ink — never pure
+     black — and grow LIGHTER with elevation
+   · primary is shifted to a lighter tone (~tone 80)
+     so it stays legible on dark surfaces
+   · containers are dark tones, their "on" colors light
+   · status colors are dark tints + light foregrounds
+   · shadows are deepened (they read weakly on dark)
+   ───────────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Surfaces — dark ink base, lighter as elevation rises */
+    --bg-page: #080d1c;
+    --surface: #111a30;
+    --surface-2: #1a2440;
+    --surface-container: #1a2440;
+    --surface-container-high: #222d4d;
+    --surface-container-highest: #2c3759;
+    --surface-bright: #1c2742;
+
+    --on-surface: #dfe5ef;
+    --on-surface-strong: #f6f8fc;
+    --on-surface-muted: #9aa6bf;
+    --on-surface-faint: #6b7794;
+    --on-surface-inverse: #0a1124;
+
+    /* Primary — lighter tone for contrast on dark (MD3 ~tone 80) */
+    --primary: #7ba3ff;
+    --primary-hover: #a8c3ff;
+    --primary-pressed: #d4e2ff;
+    --on-primary: #0b1738;
+    --primary-container: #1e3a8a;
+    --on-primary-container: #d4e2ff;
+
+    /* Secondary — electric cyan, lightened */
+    --secondary: #67d9ff;
+    --on-secondary: #083344;
+    --secondary-container: #0e7490;
+    --on-secondary-container: #d3f3ff;
+
+    /* Tertiary container set */
+    --tertiary-container: #312e81;
+    --on-tertiary-container: #c7d0ff;
+    --tertiary-outline: #4f46b5;
+
+    /* Outline / divider */
+    --outline: #46506a;
+    --outline-variant: #2c3650;
+    --divider: #2c3650;
+
+    /* Status — dark tinted containers, light foregrounds */
+    --bg-success: #0d3a2c;
+    --fg-success: #6ee7b7;
+    --border-success: #14543d;
+    --bg-warning: #41310c;
+    --fg-warning: #fcd34d;
+    --border-warning: #5c4513;
+    --bg-danger: #441e1e;
+    --fg-danger: #fca5a5;
+    --border-danger: #6b2b2b;
+    --bg-info: #1e3a8a;
+    --fg-info: #d4e2ff;
+
+    /* Shadows — deeper; elevation also conveyed by lighter surfaces */
+    --elev-1: 0 1px 2px rgba(0, 0, 0, 0.40), 0 1px 3px rgba(0, 0, 0, 0.34);
+    --elev-2: 0 1px 2px rgba(0, 0, 0, 0.40), 0 4px 10px rgba(0, 0, 0, 0.42);
+    --elev-3: 0 4px 10px rgba(0, 0, 0, 0.46), 0 2px 4px rgba(0, 0, 0, 0.40);
+    --elev-4: 0 8px 20px rgba(0, 0, 0, 0.52), 0 2px 4px rgba(0, 0, 0, 0.40);
+    --elev-5: 0 20px 40px rgba(0, 0, 0, 0.58), 0 6px 12px rgba(0, 0, 0, 0.46);
+
+    /* Focus ring — matches the lightened dark-mode primary */
+    --focus-ring: 0 0 0 3px rgba(123, 163, 255, 0.40);
+  }
 }
 
 /* ─────────────────────────────────────────────
