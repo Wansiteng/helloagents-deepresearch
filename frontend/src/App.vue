@@ -1581,7 +1581,7 @@ onBeforeUnmount(() => {
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur-lg);
   -webkit-backdrop-filter: var(--glass-blur-lg);
-  border: 1px solid rgba(255, 255, 255, 0.7);
+  border: var(--glass-border);
   border-radius: 28px;
   box-shadow: var(--soft-3);
 }
@@ -1606,7 +1606,7 @@ select {
   padding: 14px 16px;
   border-radius: 14px;
   border: 1px solid var(--aether-line);
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--surface);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   color: var(--aether-ink);
@@ -1641,7 +1641,7 @@ select {
 textarea:hover,
 input:hover,
 select:hover {
-  background: rgba(255, 255, 255, 0.75);
+  background: var(--surface-bright);
   border-color: var(--aether-line-strong);
 }
 
@@ -1650,7 +1650,7 @@ input:focus,
 select:focus {
   outline: none;
   border-color: var(--primary-400);
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--surface-container-highest);
   box-shadow: var(--focus-ring);
 }
 
@@ -1671,7 +1671,7 @@ select:focus {
   flex-direction: column;
   gap: 14px;
   padding: 20px;
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--surface-2);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--aether-line);
@@ -1699,7 +1699,7 @@ select:focus {
   font-size: 12px;
   font-weight: 500;
   color: var(--aether-ink-2);
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--surface);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--aether-line);
@@ -1712,7 +1712,7 @@ select:focus {
 }
 
 .probe-refresh-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--surface-container-highest);
   border-color: var(--aether-line-strong);
   transform: translateY(-1px);
 }
@@ -1835,7 +1835,7 @@ select:focus {
 .secondary-btn {
   padding: 9px 18px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.4);
+  background: var(--surface-thin);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--aether-line-strong);
@@ -1850,7 +1850,7 @@ select:focus {
 }
 
 .secondary-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.75);
+  background: var(--surface-bright);
   border-color: rgba(10, 14, 26, 0.2);
   transform: translateY(-1px);
 }
@@ -2085,7 +2085,7 @@ select:focus {
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid rgba(255, 255, 255, 0.65);
+  border: var(--glass-border);
   border-radius: 22px;
   padding: 20px;
   display: flex;
@@ -2216,7 +2216,7 @@ select:focus {
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid rgba(255, 255, 255, 0.65);
+  border: var(--glass-border);
   border-radius: 24px;
   padding: 28px;
   display: flex;
@@ -2262,7 +2262,7 @@ select:focus {
   border-radius: 999px;
   font-size: 12px;
   font-weight: 500;
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--surface);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   color: var(--aether-ink-2);
@@ -2351,7 +2351,7 @@ select:focus {
   position: relative;
   padding: 22px;
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--surface-2);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border: 1px solid var(--aether-line);
@@ -2446,7 +2446,7 @@ select:focus {
   white-space: pre-wrap;
   word-break: break-word;
   color: var(--aether-ink-2);
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--surface-2);
   padding: 16px 18px;
   border-radius: 14px;
   border: 1px solid var(--aether-line);
@@ -2473,7 +2473,7 @@ select:focus {
 .tools-block {
   padding: 22px;
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--surface-2);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border: 1px solid var(--aether-line);
@@ -2501,7 +2501,7 @@ select:focus {
 }
 
 .tool-entry {
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--surface);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--aether-line);
@@ -2557,7 +2557,7 @@ select:focus {
   white-space: pre-wrap;
   word-break: break-word;
   color: var(--aether-ink-2);
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--surface-2);
   padding: 12px;
   border-radius: 12px;
   border: 1px solid var(--aether-line);
@@ -2587,7 +2587,7 @@ select:focus {
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur-lg);
   -webkit-backdrop-filter: var(--glass-blur-lg);
-  border: 1px solid rgba(255, 255, 255, 0.7);
+  border: var(--glass-border);
   border-radius: 24px;
   box-shadow: var(--soft-2);
   padding: 28px;
@@ -2625,7 +2625,7 @@ select:focus {
   align-items: center;
   gap: 8px;
   padding: 8px 14px;
-  background: rgba(255, 255, 255, 0.4);
+  background: var(--surface-thin);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--aether-line);
@@ -2643,7 +2643,7 @@ select:focus {
 .back-btn .material-symbols-outlined { font-size: 16px; }
 
 .back-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.75);
+  background: var(--surface-bright);
   transform: translateY(-1px);
 }
 
@@ -2788,7 +2788,7 @@ select:focus {
   align-items: center;
   gap: 8px;
   padding: 9px 16px;
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--surface);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--aether-line);
@@ -2808,7 +2808,7 @@ select:focus {
 .history-toggle-btn .material-symbols-outlined { font-size: 18px; }
 
 .history-toggle-btn:hover {
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--surface-container-highest);
   box-shadow: var(--soft-2);
   transform: translateY(-1px);
 }
@@ -2830,7 +2830,7 @@ select:focus {
   background: var(--glass-bg-strong);
   backdrop-filter: var(--glass-blur-lg);
   -webkit-backdrop-filter: var(--glass-blur-lg);
-  border: 1px solid rgba(255, 255, 255, 0.7);
+  border: var(--glass-border);
   box-shadow: var(--soft-2);
   display: flex;
   flex-direction: column;
@@ -3024,7 +3024,7 @@ select:focus {
 .markdown-body pre {
   margin: 0 0 1em;
   padding: 16px 18px;
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--surface-2);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--aether-line);
@@ -3074,7 +3074,7 @@ select:focus {
 }
 
 .markdown-body th {
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--surface-2);
   font-weight: 600;
   color: var(--aether-ink);
   letter-spacing: 0.02em;

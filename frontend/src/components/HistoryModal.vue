@@ -136,7 +136,7 @@ function closeDetail() {
   background: var(--glass-bg-strong);
   backdrop-filter: var(--glass-blur-lg);
   -webkit-backdrop-filter: var(--glass-blur-lg);
-  border: 1px solid rgba(255, 255, 255, 0.70);
+  border: var(--glass-border);
   border-radius: 28px;
   box-shadow: var(--soft-5);
   display: flex;
@@ -192,7 +192,7 @@ function closeDetail() {
   height: 36px;
   display: grid;
   place-items: center;
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--surface);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--aether-line);
@@ -209,7 +209,7 @@ function closeDetail() {
 }
 
 .close-btn:hover {
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--surface-container-highest);
   color: var(--aether-ink);
   transform: translateY(-1px);
 }
@@ -338,7 +338,7 @@ function closeDetail() {
 }
 
 .markdown-body pre {
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--surface-2);
   border: 1px solid var(--aether-line);
   border-radius: 14px;
   padding: 14px 16px;

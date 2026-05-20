@@ -136,6 +136,7 @@
 
   /* Surface system */
   --bg-page: var(--aether-page);
+  --surface-thin: rgba(255, 255, 255, 0.4);
   --surface: rgba(255, 255, 255, 0.6);
   --surface-2: rgba(255, 255, 255, 0.5);
   --surface-container: rgba(255, 255, 255, 0.5);
@@ -304,6 +305,7 @@
 
     /* Semantic surfaces — dark with subtle white luminance */
     --bg-page: var(--aether-page);
+    --surface-thin: rgba(255, 255, 255, 0.03);
     --surface: rgba(255, 255, 255, 0.04);
     --surface-2: rgba(255, 255, 255, 0.06);
     --surface-container: rgba(255, 255, 255, 0.06);
