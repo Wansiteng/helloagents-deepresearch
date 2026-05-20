@@ -365,7 +365,12 @@
               :class="{ 'block-highlight': summaryHighlight }"
             >
               <h3>任务总结</h3>
-              <pre class="block-pre">{{ currentTaskSummary || "暂无可用信息" }}</pre>
+              <div
+                v-if="currentTaskSummary"
+                class="markdown-body"
+                v-html="renderedTaskSummary"
+              ></div>
+              <p v-else class="muted">暂无可用信息</p>
             </section>
 
             <section
@@ -423,8 +428,50 @@
           class="report-block"
           :class="{ 'block-highlight': reportHighlight }"
         >
-          <h3>最终报告</h3>
-          <pre class="block-pre">{{ reportMarkdown }}</pre>
+          <header class="report-head">
+            <h3>最终报告</h3>
+            <div class="report-actions">
+              <button
+                type="button"
+                class="secondary-btn"
+                @click="exportMarkdown"
+                :disabled="!reportMarkdown"
+                title="下载原始 Markdown"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">description</span>
+                导出 MD
+              </button>
+              <button
+                type="button"
+                class="secondary-btn"
+                @click="exportPdf"
+                :disabled="!reportMarkdown || exportingPdf"
+                title="导出为 PDF（含目录与排版）"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">picture_as_pdf</span>
+                {{ exportingPdf ? "生成中…" : "导出 PDF" }}
+              </button>
+            </div>
+          </header>
+          <div class="report-layout" :class="{ 'no-toc': reportToc.length === 0 }">
+            <nav class="report-toc" v-if="reportToc.length" aria-label="报告目录">
+              <p class="toc-title">目录</p>
+              <ul>
+                <li
+                  v-for="item in reportToc"
+                  :key="item.id"
+                  :class="['toc-level-' + item.level, { active: activeTocId === item.id }]"
+                >
+                  <a :href="`#${item.id}`" @click.prevent="scrollToHeading(item.id)">{{ item.text }}</a>
+                </li>
+              </ul>
+            </nav>
+            <article
+              class="report-main markdown-body"
+              ref="reportMainEl"
+              v-html="renderedReport"
+            ></article>
+          </div>
         </div>
       </section>
 
@@ -433,8 +480,15 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
+import { marked } from "marked";
 import HistoryModal from "./components/HistoryModal.vue";
+
+interface TocItem {
+  id: string;
+  level: number;
+  text: string;
+}
 
 import {
   runResearchStream,
@@ -586,6 +640,180 @@ const currentTask = computed(() => {
 
 const currentTaskSources = computed(() => currentTask.value?.sourceItems ?? []);
 const currentTaskSummary = computed(() => currentTask.value?.summary ?? "");
+
+// ── Markdown rendering ─────────────────────────────────────────────────
+// marked is configured for GFM (tables, strikethrough) + line-break = enter.
+marked.setOptions({ gfm: true, breaks: true });
+
+function renderMarkdown(src: string): string {
+  if (!src) return "";
+  try {
+    return marked.parse(src) as string;
+  } catch (err) {
+    console.error("markdown render failed", err);
+    return src;
+  }
+}
+
+const renderedTaskSummary = computed(() => renderMarkdown(currentTaskSummary.value));
+
+const renderedReport = ref("");
+const reportToc = ref<TocItem[]>([]);
+const activeTocId = ref<string>("");
+const exportingPdf = ref(false);
+const reportMainEl = ref<HTMLElement | null>(null);
+
+let tocObserver: IntersectionObserver | null = null;
+
+/** Slugify text → DOM id. Keeps Latin alphanumerics + CJK; everything else becomes "-". */
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\w一-龥]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+/** Walk rendered HTML, inject ids on h1/h2/h3, and collect a TOC. */
+function injectHeadingIdsAndCollectToc(html: string): { html: string; toc: TocItem[] } {
+  const toc: TocItem[] = [];
+  const counts = new Map<string, number>();
+  const next = html.replace(/<h([1-3])([^>]*)>([\s\S]*?)<\/h\1>/g, (_m, lvl, attrs, inner) => {
+    const text = String(inner).replace(/<[^>]+>/g, "").trim();
+    let slug = slugify(text);
+    if (!slug) slug = `h-${toc.length + 1}`;
+    const c = counts.get(slug) ?? 0;
+    counts.set(slug, c + 1);
+    const id = c === 0 ? slug : `${slug}-${c}`;
+    toc.push({ id, level: Number(lvl), text });
+    return `<h${lvl}${attrs} id="${id}">${inner}</h${lvl}>`;
+  });
+  return { html: next, toc };
+}
+
+function rebuildReport(md: string): void {
+  if (!md) {
+    renderedReport.value = "";
+    reportToc.value = [];
+    activeTocId.value = "";
+    return;
+  }
+  const rendered = renderMarkdown(md);
+  const { html, toc } = injectHeadingIdsAndCollectToc(rendered);
+  renderedReport.value = html;
+  reportToc.value = toc;
+  activeTocId.value = toc[0]?.id ?? "";
+  // Re-arm the IntersectionObserver after the new DOM is in place.
+  nextTick(() => setupTocObserver());
+}
+
+function setupTocObserver(): void {
+  if (tocObserver) {
+    tocObserver.disconnect();
+    tocObserver = null;
+  }
+  const root = reportMainEl.value;
+  if (!root || reportToc.value.length === 0) return;
+  const headings = Array.from(root.querySelectorAll<HTMLElement>("h1[id], h2[id], h3[id]"));
+  if (headings.length === 0) return;
+  tocObserver = new IntersectionObserver(
+    (entries) => {
+      // Pick the topmost heading currently intersecting near the top of viewport.
+      const visible = entries
+        .filter((e) => e.isIntersecting)
+        .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+      if (visible.length > 0) {
+        const id = (visible[0].target as HTMLElement).id;
+        if (id) activeTocId.value = id;
+      }
+    },
+    { rootMargin: "-80px 0px -70% 0px", threshold: 0 },
+  );
+  headings.forEach((h) => tocObserver!.observe(h));
+}
+
+function scrollToHeading(id: string): void {
+  const el = reportMainEl.value?.querySelector<HTMLElement>(`#${CSS.escape(id)}`);
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+  activeTocId.value = id;
+}
+
+watch(reportMarkdown, (md) => rebuildReport(md), { immediate: true });
+
+// ── Exports ────────────────────────────────────────────────────────────
+function reportFilename(ext: string): string {
+  const topic = (form.topic || "deep-research").trim().slice(0, 40);
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+  const safe = topic.replace(/[\\/:*?"<>|\s]+/g, "_");
+  return `${safe}-${stamp}.${ext}`;
+}
+
+function exportMarkdown(): void {
+  if (!reportMarkdown.value) return;
+  const blob = new Blob([reportMarkdown.value], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = reportFilename("md");
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  // Free the blob URL on the next tick so the download has time to start.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function exportPdf(): Promise<void> {
+  if (!reportMarkdown.value || exportingPdf.value) return;
+  const target = reportMainEl.value;
+  if (!target) return;
+  exportingPdf.value = true;
+  try {
+    // Dynamic-import so the libraries are only pulled in when the user actually exports.
+    const [{ default: html2canvas }, jspdfModule] = await Promise.all([
+      import("html2canvas"),
+      import("jspdf"),
+    ]);
+    const JsPdfCtor = (jspdfModule as any).jsPDF ?? (jspdfModule as any).default;
+
+    // Render against the current theme's page background so dark mode prints correctly.
+    const bg =
+      getComputedStyle(document.documentElement).getPropertyValue("--bg-page").trim() ||
+      "#ffffff";
+
+    const canvas = await html2canvas(target, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: bg,
+      windowWidth: target.scrollWidth,
+    });
+
+    const pdf = new JsPdfCtor({ unit: "pt", format: "a4", orientation: "portrait" });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const margin = 32;
+    const usableW = pageW - margin * 2;
+    const imgH = (canvas.height * usableW) / canvas.width;
+
+    // Paginate by drawing the same tall image with a shifted Y offset on each page.
+    const imgData = canvas.toDataURL("image/png");
+    let heightLeft = imgH;
+    let position = margin;
+    pdf.addImage(imgData, "PNG", margin, position, usableW, imgH);
+    heightLeft -= pageH - margin * 2;
+    while (heightLeft > 0) {
+      pdf.addPage();
+      position = margin - (imgH - heightLeft);
+      pdf.addImage(imgData, "PNG", margin, position, usableW, imgH);
+      heightLeft -= pageH - margin * 2;
+    }
+    pdf.save(reportFilename("pdf"));
+  } catch (err) {
+    console.error("PDF export failed", err);
+    alert(`PDF 导出失败：${(err as Error).message || err}`);
+  } finally {
+    exportingPdf.value = false;
+  }
+}
 const currentTaskTitle = computed(() => currentTask.value?.title ?? "");
 const currentTaskIntent = computed(() => currentTask.value?.intent ?? "");
 const currentTaskQuery = computed(() => currentTask.value?.query ?? "");
@@ -1173,6 +1401,10 @@ onBeforeUnmount(() => {
   if (currentController) {
     currentController.abort();
     currentController = null;
+  }
+  if (tocObserver) {
+    tocObserver.disconnect();
+    tocObserver = null;
   }
 });
 </script>
@@ -2214,6 +2446,251 @@ select:focus {
 .report-block .block-pre {
   background: var(--surface-bright);
   max-height: 440px;
+}
+
+/* ── Report header with export actions ─────────────────────── */
+.report-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.report-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.report-actions .secondary-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  font-size: 13px;
+}
+
+.report-actions .material-symbols-outlined {
+  font-size: 18px;
+}
+
+/* ── Report layout: sticky TOC + main column ──────────────── */
+.report-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.report-layout.no-toc {
+  grid-template-columns: 1fr;
+}
+
+.report-toc {
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+  padding: 4px 4px 4px 0;
+  border-right: 1px solid var(--outline-variant);
+  scrollbar-width: thin;
+  scrollbar-color: var(--outline) transparent;
+}
+
+.report-toc .toc-title {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--on-surface-muted);
+}
+
+.report-toc ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.report-toc li {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.report-toc li a {
+  display: block;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--on-surface-muted);
+  text-decoration: none;
+  border-left: 2px solid transparent;
+  transition: background var(--dur-short) var(--ease-standard),
+    color var(--dur-short) var(--ease-standard),
+    border-color var(--dur-short) var(--ease-standard);
+}
+
+.report-toc li a:hover {
+  background: var(--surface-2);
+  color: var(--on-surface-strong);
+}
+
+.report-toc li.active > a {
+  background: var(--primary-100);
+  color: var(--primary-700);
+  border-left-color: var(--primary);
+  font-weight: var(--weight-medium);
+}
+
+.report-toc li.toc-level-2 a { padding-left: 22px; }
+.report-toc li.toc-level-3 a { padding-left: 34px; font-size: 12px; }
+
+.report-main {
+  min-width: 0; /* allow children to wrap inside the grid */
+}
+
+/* ── Markdown body — applies to task summary + final report ─ */
+.markdown-body {
+  color: var(--on-surface);
+  font-size: 14px;
+  line-height: var(--leading-base);
+  word-wrap: break-word;
+}
+
+.markdown-body :where(h1, h2, h3, h4, h5, h6) {
+  color: var(--on-surface-strong);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-snug);
+  margin: 1.6em 0 0.6em;
+  scroll-margin-top: 16px;
+}
+
+.markdown-body > :first-child { margin-top: 0; }
+.markdown-body h1 { font-size: 22px; }
+.markdown-body h2 { font-size: 18px; }
+.markdown-body h3 { font-size: 16px; }
+.markdown-body h4 { font-size: 15px; font-weight: var(--weight-medium); }
+.markdown-body h5,
+.markdown-body h6 { font-size: 14px; font-weight: var(--weight-medium); }
+
+.markdown-body p {
+  margin: 0 0 0.85em;
+}
+
+.markdown-body a {
+  color: var(--primary-700);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--dur-short) var(--ease-standard);
+}
+
+.markdown-body a:hover {
+  border-bottom-color: currentColor;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  margin: 0 0 0.85em;
+  padding-left: 1.6em;
+}
+
+.markdown-body li {
+  margin: 0.25em 0;
+}
+
+.markdown-body li > p {
+  margin-bottom: 0.4em;
+}
+
+.markdown-body strong { font-weight: var(--weight-semibold); color: var(--on-surface-strong); }
+.markdown-body em { font-style: italic; }
+.markdown-body del { color: var(--on-surface-muted); }
+
+.markdown-body code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background: var(--surface-2);
+  color: var(--primary-700);
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+}
+
+.markdown-body pre {
+  margin: 0 0 1em;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: var(--leading-relaxed);
+}
+
+.markdown-body pre code {
+  background: transparent;
+  color: var(--on-surface);
+  padding: 0;
+}
+
+.markdown-body blockquote {
+  margin: 0 0 1em;
+  padding: 6px 14px;
+  border-left: 3px solid var(--primary);
+  background: var(--surface-2);
+  color: var(--on-surface-muted);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.markdown-body blockquote > :last-child { margin-bottom: 0; }
+
+.markdown-body hr {
+  margin: 1.6em 0;
+  border: 0;
+  border-top: 1px solid var(--outline-variant);
+}
+
+.markdown-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 1em;
+  font-size: 13px;
+}
+
+.markdown-body th,
+.markdown-body td {
+  padding: 8px 12px;
+  border: 1px solid var(--outline-variant);
+  text-align: left;
+  vertical-align: top;
+}
+
+.markdown-body th {
+  background: var(--surface-2);
+  font-weight: var(--weight-semibold);
+  color: var(--on-surface-strong);
+}
+
+.markdown-body img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm);
+}
+
+@media (max-width: 900px) {
+  .report-layout {
+    grid-template-columns: 1fr;
+  }
+  .report-toc {
+    position: static;
+    max-height: none;
+    border-right: none;
+    border-bottom: 1px solid var(--outline-variant);
+    padding-bottom: 12px;
+  }
 }
 
 .block-highlight {

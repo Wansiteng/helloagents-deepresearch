@@ -69,16 +69,23 @@ open_source_model_constraint_prompt = """
 
 
 todo_planner_system_prompt = """
-你是一名研究规划专家，请把复杂主题拆解为一组有限、互补的待办任务。
+你是一名研究规划专家，请把复杂主题拆解为一组互补的、多角度的待办任务。
 - 任务之间应互补，避免重复；
 - 每个任务要有明确意图与可执行的检索方向；
 - 输出须结构化、简明且便于后续协作。
 
 <GOAL>
-1. 结合研究主题梳理 3~5 个最关键的调研任务；
-2. 每个任务需明确目标意图，并给出适宜的网络检索查询；
-3. 任务之间要避免重复，整体覆盖用户的问题域；
-4. 在创建或更新任务时，必须调用 `note` 工具同步任务信息（这是唯一会写入笔记的途径）。
+1. 结合研究主题梳理 4~7 个最关键的调研任务（**越宏大、越宽泛的主题，越倾向取上限 6~7 个**）；
+2. 默认从以下角度组合切入，至少覆盖 4 个：
+   - 基本概念与原理
+   - 历史脉络 / 发展现状
+   - 关键技术、方法或机制
+   - 典型应用、案例与生态
+   - 对比、争议与局限
+   - 风险、挑战与未来展望
+3. 每个任务需明确目标意图，并给出适宜的网络检索查询；
+4. 任务之间要避免重复，整体覆盖用户的问题域；
+5. 在创建或更新任务时，必须调用 `note` 工具同步任务信息（这是唯一会写入笔记的途径）。
 </GOAL>
 
 <NOTE_COLLAB>
@@ -108,11 +115,11 @@ todo_planner_instructions = """
 ⚠ 你的回复**有且仅有**一个纯 JSON 对象，禁止输出任何 Markdown、表格、标题、解释或其他文字。
 ⚠ 禁止用 ```json ``` 代码块包裹，直接输出裸 JSON。
 
-必须严格遵循以下格式（3-5 个任务）：
+必须严格遵循以下格式（**4-7 个任务**，宽泛主题取上限）：
 {{"tasks":[{{"title":"任务名称（10字内）","intent":"任务要解决的核心问题，1-2句","query":"建议使用的英文或中文检索关键词"}}]}}
 
 示例（仅供格式参考，内容需根据研究主题自行生成）：
-{{"tasks":[{{"title":"核心概念梳理","intent":"理解该技术的基本定义与核心原理","query":"topic definition core principles overview"}},{{"title":"应用场景分析","intent":"了解该技术在实际中的应用价值与典型案例","query":"topic real-world applications use cases"}}]}}
+{{"tasks":[{{"title":"核心概念梳理","intent":"理解该技术的基本定义与核心原理","query":"topic definition core principles overview"}},{{"title":"发展脉络","intent":"梳理该方向的历史演变与里程碑","query":"topic history evolution milestones"}},{{"title":"关键技术机制","intent":"深入关键算法/架构/方法的原理与权衡","query":"topic key methods architecture trade-offs"}},{{"title":"典型应用","intent":"了解实际部署、产品与代表案例","query":"topic applications case studies"}},{{"title":"挑战与展望","intent":"识别当前瓶颈、争议与未来方向","query":"topic limitations challenges future"}}]}}
 </CRITICAL_FORMAT_REQUIREMENT>
 
 如果主题信息不足以规划任务，请输出：{{"tasks": []}}

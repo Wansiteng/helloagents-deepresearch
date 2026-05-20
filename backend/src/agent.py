@@ -91,8 +91,8 @@ class DeepResearchAgent:
         self._drain_tool_events(state)
 
         if not state.todo_items:
-            logger.info("No TODO items generated; falling back to single task")
-            state.todo_items = [self.planner.create_fallback_task(state)]
+            logger.info("No TODO items generated; falling back to multi-angle tasks")
+            state.todo_items = self.planner.create_fallback_tasks(state)
 
         for task in state.todo_items:
             self._execute_task(state, task, emit_stream=False)
@@ -146,7 +146,7 @@ class DeepResearchAgent:
         for event in self._drain_tool_events(state, step=0):
             yield event
         if not state.todo_items:
-            state.todo_items = [self.planner.create_fallback_task(state)]
+            state.todo_items = self.planner.create_fallback_tasks(state)
 
         # ── 建立任务到 SSE 通道的映射 ─────────────────────────────────
         channel_map: dict[int, dict[str, Any]] = {}

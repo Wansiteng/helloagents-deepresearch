@@ -44,8 +44,8 @@ class PlanStep:
             self._services.planner.plan_todo_list, state
         )
         if not todo_items:
-            logger.info("Planner produced no tasks; using fallback task")
-            todo_items = [self._services.planner.create_fallback_task(state)]
+            logger.info("Planner produced no tasks; using multi-angle fallback")
+            todo_items = self._services.planner.create_fallback_tasks(state)
 
         for index, task in enumerate(todo_items, start=1):
             task.stream_token = f"task_{task.id}"

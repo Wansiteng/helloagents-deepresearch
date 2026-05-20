@@ -169,14 +169,53 @@ class PlannerAgent:
         return []
 
     @staticmethod
+    def create_fallback_tasks(state: SummaryState) -> List[TodoItem]:
+        """当规划失败时生成一组多角度兜底任务。
+
+        早期版本只回退到单条「基础背景梳理」，对宏大主题来说调研角度太薄。
+        现在按 5 个角度展开：背景概念 / 现状脉络 / 关键技术 / 应用案例 / 挑战展望。
+        每条任务都根据 ``research_topic`` 拼出可执行的查询，避免空 query。
+        """
+        topic = (state.research_topic or "").strip()
+        base = topic or "研究主题"
+
+        angles: List[dict[str, str]] = [
+            {
+                "title": "背景与基本概念",
+                "intent": "梳理主题的定义、范畴与核心概念",
+                "query": f"{base} 定义 基本概念 概述",
+            },
+            {
+                "title": "发展脉络与现状",
+                "intent": "了解该方向的历史演变、关键里程碑与当前进展",
+                "query": f"{base} 发展历程 最新进展 现状",
+            },
+            {
+                "title": "关键技术与方法",
+                "intent": "识别关键算法 / 架构 / 方法的原理与权衡",
+                "query": f"{base} 关键技术 核心方法 实现原理",
+            },
+            {
+                "title": "典型应用与案例",
+                "intent": "了解实际部署、代表性产品与典型场景",
+                "query": f"{base} 应用 案例 落地",
+            },
+            {
+                "title": "挑战、争议与展望",
+                "intent": "识别现有瓶颈、争议点与未来方向",
+                "query": f"{base} 挑战 局限 未来",
+            },
+        ]
+
+        return [
+            TodoItem(id=idx, title=a["title"], intent=a["intent"], query=a["query"])
+            for idx, a in enumerate(angles, start=1)
+        ]
+
+    # 向后兼容：旧代码可能仍调用单数版本（仅供测试桩或外部插件）
+    @staticmethod
     def create_fallback_task(state: SummaryState) -> TodoItem:
-        """当规划失败时生成一个兜底任务。"""
-        return TodoItem(
-            id=1,
-            title="基础背景梳理",
-            intent="收集主题的核心背景与最新动态",
-            query=f"{state.research_topic} 最新进展" if state.research_topic else "基础背景梳理",
-        )
+        return PlannerAgent.create_fallback_tasks(state)[0]
 
     # ------------------------------------------------------------------
     # 内部解析辅助
@@ -212,26 +251,50 @@ class PlannerAgent:
         return tasks
 
     def _extract_json_payload(self, text: str) -> Optional[dict[str, Any] | list]:
-        """在文本中定位并解析 JSON 对象或数组。"""
-        start = text.find("{")
-        end = text.rfind("}")
-        if start != -1 and end != -1 and end > start:
-            candidate = text[start: end + 1]
-            try:
-                return json.loads(candidate)
-            except json.JSONDecodeError:
-                pass
+        """在文本中定位并解析 JSON 对象或数组。
 
-        start = text.find("[")
-        end = text.rfind("]")
-        if start != -1 and end != -1 and end > start:
-            candidate = text[start: end + 1]
-            try:
-                return json.loads(candidate)
-            except json.JSONDecodeError:
-                return None
+        宽容地处理模型常见的“边角输出”：被 ```json ... ``` 包裹的代码块、
+        前后多余的解释性文字、半角/全角混排引号等。
+        """
+        cleaned = text.strip()
+
+        # 1) 优先尝试 ```json ... ``` / ``` ... ``` 代码块中的内容
+        fence_match = re.search(
+            r"```(?:json|JSON)?\s*([\s\S]+?)```",
+            cleaned,
+        )
+        if fence_match:
+            inner = fence_match.group(1).strip()
+            for candidate in self._candidate_substrings(inner):
+                parsed = self._safe_json_loads(candidate)
+                if parsed is not None:
+                    return parsed
+
+        # 2) 直接在全文中寻找最外层 {...} 或 [...]
+        for candidate in self._candidate_substrings(cleaned):
+            parsed = self._safe_json_loads(candidate)
+            if parsed is not None:
+                return parsed
 
         return None
+
+    @staticmethod
+    def _candidate_substrings(text: str) -> List[str]:
+        """生成可能的 JSON 候选片段（按出现顺序，先对象后数组）。"""
+        candidates: List[str] = []
+        for open_ch, close_ch in (("{", "}"), ("[", "]")):
+            start = text.find(open_ch)
+            end = text.rfind(close_ch)
+            if start != -1 and end != -1 and end > start:
+                candidates.append(text[start : end + 1])
+        return candidates
+
+    @staticmethod
+    def _safe_json_loads(candidate: str) -> Optional[dict[str, Any] | list]:
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError:
+            return None
 
     def _extract_tool_payload(self, text: str) -> Optional[dict[str, Any]]:
         """解析输出中首个 TOOL_CALL 表达式。"""

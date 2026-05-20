@@ -22,6 +22,10 @@ class _FakePlanner:
     def create_fallback_task(state: SummaryState) -> TodoItem:
         return TodoItem(id=1, title="fallback", intent="i", query="q")
 
+    @staticmethod
+    def create_fallback_tasks(state: SummaryState):
+        return [TodoItem(id=1, title="fallback", intent="i", query="q")]
+
 
 class _FakeSummarizer:
     def summarize_task(self, state, task, context) -> str:
