@@ -108,48 +108,51 @@ function closeDetail() {
 
 <style scoped>
 /* ============================================================
-   HistoryModal v3 — Sapphire Ink light dialog
+   HistoryModal v4 "Aether" — glass dialog over blurred scrim
 ============================================================ */
 
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(10, 17, 36, 0.36);
+  background: rgba(10, 14, 26, 0.32);
+  backdrop-filter: saturate(160%) blur(12px);
+  -webkit-backdrop-filter: saturate(160%) blur(12px);
   z-index: 1000;
   display: grid;
   place-items: center;
-  backdrop-filter: blur(3px);
-  animation: scrimIn var(--dur-medium) var(--ease-standard);
+  padding: 32px;
+  animation: aetherScrimIn 300ms var(--aether-ease);
 }
 
-@keyframes scrimIn {
+@keyframes aetherScrimIn {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
 
 .modal-content,
 .detail-content {
-  background: var(--surface);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-2xl);
-  width: min(620px, 90vw);
+  width: min(640px, 100%);
   max-height: 80vh;
+  background: var(--glass-bg-strong);
+  backdrop-filter: var(--glass-blur-lg);
+  -webkit-backdrop-filter: var(--glass-blur-lg);
+  border: 1px solid rgba(255, 255, 255, 0.70);
+  border-radius: 28px;
+  box-shadow: var(--soft-5);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: var(--elev-5);
-  color: var(--on-surface);
-  animation: dialogIn var(--dur-long) var(--ease-spring);
+  color: var(--aether-ink-2);
+  animation: aetherDialogIn 500ms var(--aether-ease);
 }
 
-@keyframes dialogIn {
-  0%   { transform: translateY(20px) scale(0.94); opacity: 0; }
-  60%  { transform: translateY(-4px) scale(1.01); opacity: 1; }
-  100% { transform: translateY(0)    scale(1);    opacity: 1; }
+@keyframes aetherDialogIn {
+  from { transform: translateY(20px) scale(0.96); opacity: 0; }
+  to   { transform: translateY(0) scale(1); opacity: 1; }
 }
 
 .detail-content {
-  width: min(800px, 95vw);
+  width: min(880px, 100%);
   height: 90vh;
   max-height: 90vh;
 }
@@ -157,28 +160,31 @@ function closeDetail() {
 .detail-modal {
   position: absolute;
   inset: 0;
-  background: rgba(10, 17, 36, 0.36);
+  background: rgba(10, 14, 26, 0.32);
+  backdrop-filter: saturate(160%) blur(12px);
+  -webkit-backdrop-filter: saturate(160%) blur(12px);
   display: grid;
   place-items: center;
   z-index: 1010;
-  backdrop-filter: blur(3px);
-  animation: scrimIn var(--dur-medium) var(--ease-standard);
+  padding: 32px;
+  animation: aetherScrimIn 300ms var(--aether-ease);
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 24px 14px;
-  border-bottom: 1px solid var(--outline-variant);
+  padding: 24px 24px 12px;
+  border-bottom: 1px solid var(--aether-line);
 }
 
 .modal-header h2,
 .modal-header h3 {
   margin: 0;
-  font-size: 18px;
-  font-weight: var(--weight-semibold);
-  color: var(--on-surface-strong);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--aether-ink);
 }
 
 .close-btn {
@@ -186,29 +192,34 @@ function closeDetail() {
   height: 36px;
   display: grid;
   place-items: center;
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: 1.5rem;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--aether-line);
+  border-radius: 12px;
+  font-size: 1.4rem;
   line-height: 1;
+  color: var(--aether-ink-3);
   cursor: pointer;
-  color: var(--on-surface-muted);
-  transition: background var(--dur-short) var(--ease-standard),
-    color var(--dur-short) var(--ease-standard),
-    transform var(--dur-medium) var(--ease-spring);
+  font-family: inherit;
+  box-shadow: var(--soft-1);
+  transition: background 220ms var(--aether-ease),
+    color 220ms var(--aether-ease),
+    transform 220ms var(--aether-ease);
 }
 
 .close-btn:hover {
-  background: var(--surface-2);
-  color: var(--on-surface-strong);
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--aether-ink);
+  transform: translateY(-1px);
 }
 
 .close-btn:active {
-  transform: scale(0.92);
+  transform: scale(0.96);
 }
 
 .modal-body {
-  padding: 16px 20px 20px;
+  padding: 12px 18px 22px;
   overflow-y: auto;
   flex: 1;
 }
@@ -219,19 +230,19 @@ function closeDetail() {
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
 .history-item {
-  padding: 14px 16px;
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
+  padding: 14px;
+  border-radius: 14px;
   cursor: pointer;
-  background: var(--surface);
-  transition: background var(--dur-short) var(--ease-standard),
-    border-color var(--dur-short) var(--ease-standard),
-    transform var(--dur-medium) var(--ease-spring);
-  animation: drFadeUp var(--dur-medium) var(--ease-spring-soft) both;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: background 220ms var(--aether-ease);
+  animation: aetherFadeUp 500ms var(--aether-ease) both;
 }
 
 .history-item:nth-child(1) { animation-delay: 30ms; }
@@ -244,16 +255,15 @@ function closeDetail() {
 .history-item:nth-child(8) { animation-delay: 310ms; }
 
 .history-item:hover {
-  background: var(--surface-2);
-  border-color: var(--primary-200);
-  transform: translateY(-2px);
+  background: rgba(10, 14, 26, 0.04);
 }
 
 .item-title {
-  font-weight: var(--weight-medium);
-  font-size: 14px;
-  color: var(--on-surface-strong);
-  margin-bottom: 8px;
+  font-weight: 500;
+  font-size: 14.5px;
+  color: var(--aether-ink);
+  letter-spacing: -0.005em;
+  line-height: 1.4;
 }
 
 .item-meta {
@@ -261,24 +271,26 @@ function closeDetail() {
   justify-content: space-between;
   align-items: center;
   font-size: 12px;
-  color: var(--on-surface-muted);
+  color: var(--aether-ink-4);
 }
 
 .item-type {
-  background: var(--secondary-container);
-  color: var(--on-secondary-container);
   padding: 3px 10px;
-  border-radius: var(--radius-pill);
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--primary-600);
   font-size: 11px;
-  font-weight: var(--weight-medium);
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 
 .loading-state,
 .error-state,
 .empty-state {
   text-align: center;
-  padding: 2rem;
-  color: var(--on-surface-muted);
+  padding: 2.5rem 1rem;
+  color: var(--aether-ink-4);
+  font-size: 14px;
 }
 
 .error-state {
@@ -286,8 +298,10 @@ function closeDetail() {
 }
 
 .markdown-body {
-  line-height: var(--leading-base);
-  color: var(--on-surface);
+  line-height: 1.65;
+  letter-spacing: -0.005em;
+  color: var(--aether-ink-2);
+  font-size: 15px;
 }
 
 .markdown-body h1,
@@ -295,10 +309,45 @@ function closeDetail() {
 .markdown-body h3 {
   margin-top: 1.5em;
   margin-bottom: 0.5em;
-  color: var(--on-surface-strong);
+  color: var(--aether-ink);
+  letter-spacing: -0.015em;
 }
 
 .markdown-body p {
-  margin-bottom: 1em;
+  margin-bottom: 0.9em;
+}
+
+.markdown-body a {
+  color: var(--primary-600);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 200ms var(--aether-ease);
+}
+
+.markdown-body a:hover {
+  border-bottom-color: currentColor;
+}
+
+.markdown-body code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--primary-700);
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.markdown-body pre {
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid var(--aether-line);
+  border-radius: 14px;
+  padding: 14px 16px;
+  overflow-x: auto;
+}
+
+.markdown-body pre code {
+  background: transparent;
+  color: var(--aether-ink-2);
+  padding: 0;
 }
 </style>

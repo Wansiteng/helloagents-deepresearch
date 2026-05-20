@@ -1,15 +1,15 @@
 <svg width="220" height="48" viewBox="0 0 220 48" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="DeepResearch">
   <defs>
     <linearGradient id="ink2" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#008069"></stop>
-      <stop offset="100%" stop-color="#054d3e"></stop>
+      <stop offset="0%" stop-color="#2563eb"></stop>
+      <stop offset="100%" stop-color="#1e3a8a"></stop>
     </linearGradient>
   </defs>
   <rect x="0" y="0" width="48" height="48" rx="12" fill="url(#ink2)"></rect>
   <g transform="translate(10 10)">
     <rect x="0" y="0" width="8" height="8" rx="1.6" fill="#ffffff" opacity="0.95"></rect>
     <rect x="10" y="0" width="8" height="8" rx="1.6" fill="#ffffff" opacity="0.55"></rect>
-    <rect x="20" y="0" width="8" height="8" rx="1.6" fill="#25d366"></rect>
+    <rect x="20" y="0" width="8" height="8" rx="1.6" fill="#06b6d4"></rect>
     <rect x="0" y="10" width="8" height="8" rx="1.6" fill="#ffffff" opacity="0.55"></rect>
     <rect x="10" y="10" width="8" height="8" rx="1.6" fill="#ffffff" opacity="0.95"></rect>
     <rect x="20" y="10" width="8" height="8" rx="1.6" fill="#ffffff" opacity="0.35"></rect>
@@ -17,5 +17,5 @@
     <rect x="10" y="20" width="8" height="8" rx="1.6" fill="#ffffff" opacity="0.55"></rect>
     <rect x="20" y="20" width="8" height="8" rx="1.6" fill="#ffffff" opacity="0.95"></rect>
   </g>
-  <text x="62" y="31" font-family="Roboto Flex, -apple-system, system-ui, sans-serif" font-size="20" font-weight="600" fill="#0a1124" fill="#111b21" letter-spacing="-0.01em">DeepResearch</text>
+  <text x="62" y="31" font-family="Roboto Flex, -apple-system, system-ui, sans-serif" font-size="20" font-weight="600" fill="#0a1124" fill="#0a0e1a" letter-spacing="-0.025em">DeepResearch</text>
 </svg>

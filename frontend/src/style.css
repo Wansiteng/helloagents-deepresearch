@@ -1,10 +1,13 @@
 /* ============================================================
-   DeepResearch Design System — v3
-   Sapphire Ink palette · saturated · white surface
-   Airbnb-flavored spring motion · AI rainbow halo retained
+   DeepResearch Design System — v4 "Aether"
+   · Frosted-glass surfaces over a slow-drifting aurora
+   · Restrained sapphire accent on cool ink neutrals
+   · Larger, airier type with tight tracking
+   · Gentler decelerated easing (no spring overshoot)
+   · AI halo is pure colored glow — no ring
 ============================================================ */
 
-/* -------- Fonts (Roboto Flex + Noto Sans SC + Roboto Mono) -------- */
+/* -------- Fonts (Roboto Flex + Noto Sans SC + Roboto Mono + Material Symbols) -------- */
 @import url("https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;8..144,500;8..144,600;8..144,700&family=Noto+Sans+SC:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap");
 
@@ -28,7 +31,7 @@
 }
 .material-symbols-outlined.filled { font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24; }
 
-/* Smooth rotation requires registered custom property */
+/* Smooth conic rotation requires registered custom property */
 @property --halo-angle {
   syntax: "<angle>";
   initial-value: 0deg;
@@ -40,137 +43,170 @@
   color-scheme: light dark;
 
   /* ─────────────────────────────────────────────
-     WHATSAPP-INSPIRED GREEN PALETTE
-     Teal-green primary · bright accent green
-     Desaturated gray-green neutrals · vivid status
+     SAPPHIRE INK PRIMITIVES
+     Deep saturated blue · electric cyan accent
+     Cool slate neutrals · vivid status colors
      ───────────────────────────────────────────── */
 
-  /* Desaturated gray-green neutrals (the canvas) */
-  --neutral-0: #ffffff;       /* page bg */
-  --neutral-50: #f7f8fa;      /* card surface */
-  --neutral-100: #f0f2f5;     /* surface variant */
-  --neutral-200: #e9edef;     /* outline-variant / divider */
-  --neutral-300: #d1d7db;     /* outline */
-  --neutral-400: #aebac1;     /* disabled fg */
-  --neutral-500: #8696a0;     /* on-surface variant low */
-  --neutral-600: #667781;     /* on-surface variant */
-  --neutral-700: #3b4a54;     /* on-surface */
-  --neutral-800: #202c33;     /* on-surface emphasis */
-  --neutral-900: #111b21;     /* almost-black ink */
+  /* Cool ink-tinted neutrals (kept from v3 — semantic layer references them) */
+  --neutral-0: #ffffff;
+  --neutral-50: #f6f8fc;
+  --neutral-100: #eef1f7;
+  --neutral-200: #dfe5ef;
+  --neutral-300: #c5cedd;
+  --neutral-400: #94a0b8;
+  --neutral-500: #64718b;
+  --neutral-600: #475569;
+  --neutral-700: #2f3a4f;
+  --neutral-800: #1c2436;
+  --neutral-900: #0a1124;
 
-  /* Primary — WhatsApp teal-green */
-  --primary-50:  #e7f3f0;
-  --primary-100: #c8e6de;
-  --primary-200: #93cdbd;
-  --primary-300: #57b39b;
-  --primary-400: #1f9a7e;
-  --primary-500: #008069;     /* PRIMARY — WhatsApp header green */
-  --primary-600: #00674f;
-  --primary-700: #054d3e;     /* deep teal */
-  --primary-800: #043b30;
-  --primary-900: #032b23;
+  /* Sapphire — the only accent in v4 */
+  --primary-50:  #eaf1ff;
+  --primary-100: #d4e2ff;
+  --primary-200: #a8c3ff;
+  --primary-300: #7ba3ff;
+  --primary-400: #4c80f5;
+  --primary-500: #2563eb;     /* PRIMARY */
+  --primary-600: #1d4ed8;     /* hover */
+  --primary-700: #1e3a8a;     /* pressed */
+  --primary-800: #172554;
+  --primary-900: #0b1738;
 
-  /* Bright accent green — secondary (FAB / unread / AI moments) */
-  --secondary-50:  #e3f9ea;
-  --secondary-100: #c0f0cf;
-  --secondary-300: #6fdc92;
-  --secondary-500: #25d366;   /* SECONDARY — WhatsApp brand green */
-  --secondary-700: #128c3e;
-  --secondary-900: #0a4f23;
+  /* Electric cyan — retired from regular UI in v4, kept for the logo accent cell */
+  --secondary-50:  #e0f7ff;
+  --secondary-100: #b8edff;
+  --secondary-300: #67d9ff;
+  --secondary-500: #06b6d4;
+  --secondary-700: #0e7490;
+  --secondary-900: #083344;
 
-  /* Muted gray-green — tertiary (auxiliary / path chips) */
-  --tertiary-100: #e4e9e7;
-  --tertiary-300: #b6c2bd;
-  --tertiary-500: #5d706a;
-  --tertiary-700: #3a4843;
+  /* Sky-violet — tertiary (path chips only) */
+  --tertiary-100: #e0e7ff;
+  --tertiary-300: #a5b4fc;
+  --tertiary-500: #6366f1;
+  --tertiary-700: #4338ca;
 
-  /* Status — saturated, readable on white */
+  /* Status */
   --success-100: #d1fae5;
-  --success-500: #10b981;     /* emerald */
+  --success-500: #10b981;
   --success-700: #047857;
   --warning-100: #fef3c7;
-  --warning-500: #f59e0b;     /* amber */
+  --warning-500: #f59e0b;
   --warning-700: #b45309;
   --danger-100:  #fee2e2;
-  --danger-500:  #ef4444;     /* red */
+  --danger-500:  #ef4444;
   --danger-700:  #b91c1c;
 
   /* ─────────────────────────────────────────────
-     SEMANTIC TOKENS (Material-flavored)
+     AETHER LAYER — v4 specific
+     Cool paper page · ink-on-paper ramp · glass recipe
+     ───────────────────────────────────────────── */
+
+  --aether-page: #f5f6f9;
+  --aether-ink:    #0a0e1a;
+  --aether-ink-2:  #1f2330;
+  --aether-ink-3:  #4a5266;
+  --aether-ink-4:  #828a9c;
+  --aether-line:        rgba(10, 14, 26, 0.07);
+  --aether-line-strong: rgba(10, 14, 26, 0.12);
+
+  /* Glass recipe — translucent + saturated blur */
+  --glass-bg:        rgba(255, 255, 255, 0.60);
+  --glass-bg-strong: rgba(255, 255, 255, 0.78);
+  --glass-bg-thin:   rgba(255, 255, 255, 0.42);
+  --glass-blur:    saturate(180%) blur(24px);
+  --glass-blur-lg: saturate(180%) blur(40px);
+  --glass-border:  1px solid rgba(255, 255, 255, 0.65);
+
+  /* Soft, cool-tinted elevation */
+  --soft-1: 0 1px 0 rgba(10, 14, 26, 0.04), 0 1px 2px rgba(10, 14, 26, 0.04);
+  --soft-2: 0 1px 0 rgba(10, 14, 26, 0.04), 0 6px 18px -8px rgba(10, 14, 26, 0.16);
+  --soft-3: 0 1px 0 rgba(10, 14, 26, 0.04), 0 18px 36px -16px rgba(10, 14, 26, 0.18);
+  --soft-5: 0 30px 80px -20px rgba(10, 14, 26, 0.28), 0 2px 6px rgba(10, 14, 26, 0.08);
+
+  /* Decelerated easing — no overshoot */
+  --aether-ease:      cubic-bezier(0.22, 1, 0.36, 1);
+  --aether-ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ─────────────────────────────────────────────
+     SEMANTIC TOKENS (kept for component back-compat —
+     markdown body, status pills, etc. read these)
      ───────────────────────────────────────────── */
 
   /* Surface system */
-  --bg-page: var(--neutral-0);
-  --surface: var(--neutral-50);
-  --surface-2: var(--neutral-100);
-  --surface-container: var(--neutral-100);
-  --surface-container-high: #e4e9e7;
-  --on-surface: var(--neutral-800);
-  --on-surface-strong: var(--neutral-900);
-  --on-surface-muted: var(--neutral-600);
-  --on-surface-faint: var(--neutral-500);
-  --on-surface-inverse: var(--neutral-0);
+  --bg-page: var(--aether-page);
+  --surface: rgba(255, 255, 255, 0.6);
+  --surface-2: rgba(255, 255, 255, 0.5);
+  --surface-container: rgba(255, 255, 255, 0.5);
+  --surface-container-high: rgba(255, 255, 255, 0.7);
+  --surface-container-highest: rgba(255, 255, 255, 0.85);
+  --surface-bright: rgba(255, 255, 255, 0.78);
+
+  --on-surface: var(--aether-ink-2);
+  --on-surface-strong: var(--aether-ink);
+  --on-surface-muted: var(--aether-ink-3);
+  --on-surface-faint: var(--aether-ink-4);
+  --on-surface-inverse: #ffffff;
 
   /* Primary set */
   --primary: var(--primary-500);
   --primary-hover: var(--primary-600);
   --primary-pressed: var(--primary-700);
-  --on-primary: var(--neutral-0);
-  --primary-container: var(--primary-100);
+  --on-primary: #ffffff;
+  --primary-container: rgba(37, 99, 235, 0.10);
   --on-primary-container: var(--primary-700);
 
-  /* Secondary set */
+  /* Secondary set (unused in regular UI; logo accent only) */
   --secondary: var(--secondary-500);
-  --on-secondary: var(--neutral-0);
+  --on-secondary: #ffffff;
   --secondary-container: var(--secondary-100);
   --on-secondary-container: var(--secondary-700);
 
-  /* Outline / divider */
-  --outline: var(--neutral-300);
-  --outline-variant: var(--neutral-200);
-  --divider: var(--neutral-200);
+  /* Tertiary container set (path chips) */
+  --tertiary-container: rgba(99, 102, 241, 0.08);
+  --on-tertiary-container: var(--tertiary-700);
+  --tertiary-outline: rgba(99, 102, 241, 0.20);
 
-  /* Status semantic */
-  --bg-success: var(--success-100);
+  /* Outline / divider */
+  --outline: var(--aether-line-strong);
+  --outline-variant: var(--aether-line);
+  --divider: var(--aether-line);
+
+  /* Status semantic (soft glass tints) */
+  --bg-success: rgba(16, 185, 129, 0.10);
   --fg-success: var(--success-700);
-  --bg-warning: var(--warning-100);
+  --border-success: rgba(16, 185, 129, 0.22);
+  --bg-warning: rgba(245, 158, 11, 0.12);
   --fg-warning: var(--warning-700);
-  --bg-danger: var(--danger-100);
+  --border-warning: rgba(245, 158, 11, 0.24);
+  --bg-danger: rgba(239, 68, 68, 0.10);
   --fg-danger: var(--danger-700);
-  --bg-info: var(--primary-100);
+  --border-danger: rgba(239, 68, 68, 0.22);
+  --bg-info: rgba(37, 99, 235, 0.10);
   --fg-info: var(--primary-700);
 
-  /* Shadows — cool ink-tinted, slightly more pronounced */
+  /* Legacy Material elevation aliases — point at the Aether soft shadows */
   --elev-0: none;
-  --elev-1: 0 1px 2px rgba(17, 27, 33, 0.06), 0 1px 3px rgba(17, 27, 33, 0.05);
-  --elev-2: 0 1px 2px rgba(17, 27, 33, 0.06), 0 4px 10px rgba(17, 27, 33, 0.07);
-  --elev-3: 0 4px 10px rgba(17, 27, 33, 0.08), 0 2px 4px rgba(17, 27, 33, 0.06);
-  --elev-4: 0 8px 20px rgba(17, 27, 33, 0.10), 0 2px 4px rgba(17, 27, 33, 0.06);
-  --elev-5: 0 20px 40px rgba(17, 27, 33, 0.14), 0 6px 12px rgba(17, 27, 33, 0.08);
+  --elev-1: var(--soft-1);
+  --elev-2: var(--soft-2);
+  --elev-3: var(--soft-3);
+  --elev-4: var(--soft-3);
+  --elev-5: var(--soft-5);
 
-  /* Focus ring — uses primary tone */
-  --focus-ring: 0 0 0 3px rgba(0, 128, 105, 0.30);
+  /* Focus ring — 4px sapphire at 12% per v4 form spec */
+  --focus-ring: 0 0 0 4px rgba(37, 99, 235, 0.12);
 
-  /* Extended semantic tokens (consumed by component styles) */
-  --surface-bright: #ffffff;            /* inputs / nested blocks, brighter than --surface */
-  --surface-container-highest: #d4dcd9; /* FAB hover */
-  --border-success: #a7f3d0;
-  --border-warning: #fde68a;
-  --border-danger: #fecaca;
-  --tertiary-container: var(--tertiary-100);
-  --on-tertiary-container: var(--tertiary-700);
-  --tertiary-outline: var(--tertiary-300);
-
-  /* Radii — Material 3 shape scale */
+  /* Radii */
   --radius-xs: 4px;
   --radius-sm: 8px;
   --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
+  --radius-lg: 18px;
+  --radius-xl: 22px;
   --radius-2xl: 28px;
   --radius-pill: 999px;
 
-  /* Spacing — 4px base */
+  /* Spacing */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -183,17 +219,14 @@
   --space-12: 48px;
   --space-16: 64px;
 
-  /* ─────────────────────────────────────────────
-     MOTION — Airbnb-flavored spring system
-     Use --ease-spring (overshoots a hair, then settles)
-     for entrances, taps, and reveals.
-     ───────────────────────────────────────────── */
-  --ease-standard:    cubic-bezier(0.2, 0, 0, 1);
-  --ease-emphasized:  cubic-bezier(0.2, 0, 0, 1);
-  --ease-decelerated: cubic-bezier(0, 0, 0, 1);
-  --ease-spring:      cubic-bezier(0.34, 1.56, 0.64, 1);  /* gentle overshoot — Airbnb signature */
-  --ease-spring-soft: cubic-bezier(0.5, 1.25, 0.5, 1);    /* softer settle */
-  --ease-bounce:      cubic-bezier(0.68, -0.55, 0.27, 1.55); /* anticipation + overshoot */
+  /* Motion durations (legacy spring tokens point at aether-ease for backwards-compat,
+     so any leftover `var(--ease-spring)` references still produce the v4 feel) */
+  --ease-standard: var(--aether-ease-soft);
+  --ease-emphasized: var(--aether-ease);
+  --ease-decelerated: var(--aether-ease);
+  --ease-spring: var(--aether-ease);
+  --ease-spring-soft: var(--aether-ease);
+  --ease-bounce: var(--aether-ease);
 
   --dur-instant: 100ms;
   --dur-short:   180ms;
@@ -202,10 +235,7 @@
   --dur-xlong:   620ms;
   --dur-halo:    4s;
 
-  /* ─────────────────────────────────────────────
-     AI HALO — rotating soft-rainbow conic gradient
-     Slightly more saturated stops than v2.
-     ───────────────────────────────────────────── */
+  /* AI halo conic gradient stops — soft saturated pastels */
   --halo-stops:
     #ff6b9d 0deg,
     #ffa94d 51deg,
@@ -216,25 +246,22 @@
     #9b6dff 306deg,
     #ff6b9d 360deg;
 
-  /* ─────────────────────────────────────────────
-     TYPOGRAPHY
-     Roboto Flex (Latin) + Noto Sans SC (CJK)
-     ───────────────────────────────────────────── */
+  /* Typography */
   --font-sans: "Roboto Flex", "Noto Sans SC", -apple-system, BlinkMacSystemFont,
     "Segoe UI", "PingFang SC", "Microsoft YaHei", Roboto, sans-serif;
   --font-mono: "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-  --type-display: 32px;
+  --type-display: 52px;   /* landing hero */
   --type-headline: 22px;
-  --type-title: 18px;
+  --type-title: 17px;
   --type-subtitle: 16px;
-  --type-body-lg: 15px;
-  --type-body: 14px;
-  --type-label: 13px;
+  --type-body-lg: 19px;
+  --type-body: 15px;
+  --type-label: 12px;
   --type-caption: 12px;
   --type-mono: 13px;
 
-  --leading-tight: 1.25;
+  --leading-tight: 1.04;
   --leading-snug: 1.4;
   --leading-base: 1.55;
   --leading-relaxed: 1.7;
@@ -244,93 +271,93 @@
   --weight-semibold: 600;
   --weight-bold: 700;
 
-  --tracking-wide: 0.4px;
-  --tracking-tight: -0.01em;
+  --tracking-wide: 0.04em;
+  --tracking-tight: -0.015em;
 }
 
 /* ─────────────────────────────────────────────
-   DARK THEME — auto, follows OS preference
-   Overrides only the SEMANTIC layer; every
-   component reads semantic tokens, so the whole
-   app re-themes from this one block.
-
-   Palette follows Material Design 3 dark guidance:
-   · surfaces are dark desaturated ink — never pure
-     black — and grow LIGHTER with elevation
-   · primary is shifted to a lighter tone (~tone 80)
-     so it stays legible on dark surfaces
-   · containers are dark tones, their "on" colors light
-   · status colors are dark tints + light foregrounds
-   · shadows are deepened (they read weakly on dark)
+   AUTO DARK MODE — Aether dark
+   Dark ink page · dark glass · sapphire lightens
    ───────────────────────────────────────────── */
 @media (prefers-color-scheme: dark) {
   :root {
-    /* Surfaces — WhatsApp dark ink base, lighter as elevation rises */
-    --bg-page: #0b141a;
-    --surface: #111b21;
-    --surface-2: #202c33;
-    --surface-container: #202c33;
-    --surface-container-high: #2a3942;
-    --surface-container-highest: #33444d;
-    --surface-bright: #233138;
+    /* Aether layer flips */
+    --aether-page:   #0a0e1a;
+    --aether-ink:    #f5f7fb;
+    --aether-ink-2:  #dfe5ef;
+    --aether-ink-3:  #8c93a4;
+    --aether-ink-4:  #6b7384;
+    --aether-line:        rgba(255, 255, 255, 0.07);
+    --aether-line-strong: rgba(255, 255, 255, 0.14);
 
-    --on-surface: #e9edef;
-    --on-surface-strong: #ffffff;
-    --on-surface-muted: #8696a0;
-    --on-surface-faint: #667781;
-    --on-surface-inverse: #0b141a;
+    /* Glass becomes dark glass — keeps the same depth illusion on dark page */
+    --glass-bg:        rgba(20, 26, 44, 0.55);
+    --glass-bg-strong: rgba(20, 26, 44, 0.72);
+    --glass-bg-thin:   rgba(20, 26, 44, 0.38);
+    --glass-border:    1px solid rgba(255, 255, 255, 0.07);
 
-    /* Primary — brighter teal-green for contrast on dark */
-    --primary: #00a884;
-    --primary-hover: #1ec39c;
-    --primary-pressed: #25d366;
-    --on-primary: #04332a;
-    --primary-container: #054d3e;
-    --on-primary-container: #c8e6de;
+    /* Deeper, darker shadow */
+    --soft-1: 0 1px 0 rgba(0, 0, 0, 0.40), 0 1px 2px rgba(0, 0, 0, 0.32);
+    --soft-2: 0 1px 0 rgba(0, 0, 0, 0.40), 0 6px 18px -8px rgba(0, 0, 0, 0.55);
+    --soft-3: 0 1px 0 rgba(0, 0, 0, 0.40), 0 18px 36px -16px rgba(0, 0, 0, 0.65);
+    --soft-5: 0 30px 80px -20px rgba(0, 0, 0, 0.75), 0 2px 6px rgba(0, 0, 0, 0.45);
 
-    /* Secondary — bright accent green */
-    --secondary: #25d366;
-    --on-secondary: #0a4f23;
-    --secondary-container: #128c3e;
-    --on-secondary-container: #c0f0cf;
+    /* Semantic surfaces — dark with subtle white luminance */
+    --bg-page: var(--aether-page);
+    --surface: rgba(255, 255, 255, 0.04);
+    --surface-2: rgba(255, 255, 255, 0.06);
+    --surface-container: rgba(255, 255, 255, 0.06);
+    --surface-container-high: rgba(255, 255, 255, 0.10);
+    --surface-container-highest: rgba(255, 255, 255, 0.14);
+    --surface-bright: rgba(255, 255, 255, 0.08);
 
-    /* Tertiary container set — muted dark gray-green */
-    --tertiary-container: #2a3942;
-    --on-tertiary-container: #cdd6d3;
-    --tertiary-outline: #44555c;
+    --on-surface: var(--aether-ink-2);
+    --on-surface-strong: var(--aether-ink);
+    --on-surface-muted: var(--aether-ink-3);
+    --on-surface-faint: var(--aether-ink-4);
 
-    /* Outline / divider */
-    --outline: #44555c;
-    --outline-variant: #2a3942;
-    --divider: #2a3942;
+    /* Primary — Material 3 dark guidance: shift toward tone 80 */
+    --primary: #7ba3ff;
+    --primary-hover: #a8c3ff;
+    --primary-pressed: #d4e2ff;
+    --on-primary: #0b1738;
+    --primary-container: rgba(123, 163, 255, 0.18);
+    --on-primary-container: #d4e2ff;
 
-    /* Status — dark tinted containers, light foregrounds */
-    --bg-success: #0d3a2c;
+    /* Tertiary container (path chip) — dark indigo wash */
+    --tertiary-container: rgba(165, 180, 252, 0.14);
+    --on-tertiary-container: #c7d0ff;
+    --tertiary-outline: rgba(165, 180, 252, 0.28);
+
+    --outline: var(--aether-line-strong);
+    --outline-variant: var(--aether-line);
+    --divider: var(--aether-line);
+
+    /* Status (dark) — keep the soft tint pattern */
+    --bg-success: rgba(16, 185, 129, 0.18);
     --fg-success: #6ee7b7;
-    --border-success: #14543d;
-    --bg-warning: #41310c;
+    --border-success: rgba(16, 185, 129, 0.32);
+    --bg-warning: rgba(245, 158, 11, 0.18);
     --fg-warning: #fcd34d;
-    --border-warning: #5c4513;
-    --bg-danger: #441e1e;
+    --border-warning: rgba(245, 158, 11, 0.32);
+    --bg-danger: rgba(239, 68, 68, 0.18);
     --fg-danger: #fca5a5;
-    --border-danger: #6b2b2b;
-    --bg-info: #054d3e;
-    --fg-info: #c8e6de;
+    --border-danger: rgba(239, 68, 68, 0.32);
+    --bg-info: rgba(123, 163, 255, 0.18);
+    --fg-info: #d4e2ff;
 
-    /* Shadows — deeper; elevation also conveyed by lighter surfaces */
-    --elev-1: 0 1px 2px rgba(0, 0, 0, 0.40), 0 1px 3px rgba(0, 0, 0, 0.34);
-    --elev-2: 0 1px 2px rgba(0, 0, 0, 0.40), 0 4px 10px rgba(0, 0, 0, 0.42);
-    --elev-3: 0 4px 10px rgba(0, 0, 0, 0.46), 0 2px 4px rgba(0, 0, 0, 0.40);
-    --elev-4: 0 8px 20px rgba(0, 0, 0, 0.52), 0 2px 4px rgba(0, 0, 0, 0.40);
-    --elev-5: 0 20px 40px rgba(0, 0, 0, 0.58), 0 6px 12px rgba(0, 0, 0, 0.46);
+    --focus-ring: 0 0 0 4px rgba(123, 163, 255, 0.22);
 
-    /* Focus ring — matches the lightened dark-mode primary */
-    --focus-ring: 0 0 0 3px rgba(0, 168, 132, 0.40);
+    --elev-1: var(--soft-1);
+    --elev-2: var(--soft-2);
+    --elev-3: var(--soft-3);
+    --elev-4: var(--soft-3);
+    --elev-5: var(--soft-5);
   }
 }
 
 /* ─────────────────────────────────────────────
-   SEMANTIC ELEMENT STYLES
+   GLOBAL ELEMENT STYLES
    ───────────────────────────────────────────── */
 * { box-sizing: border-box; }
 
@@ -339,27 +366,100 @@ body {
   font-family: var(--font-sans);
   font-size: var(--type-body);
   line-height: var(--leading-base);
-  color: var(--on-surface);
-  background: var(--bg-page);
+  letter-spacing: -0.005em;
+  color: var(--aether-ink-2);
+  background: var(--aether-page);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-feature-settings: "ss01", "cv11";
+  overflow-x: hidden;
+  position: relative;
+  min-height: 100vh;
 }
 
-h1, h2, h3, h4, h5, h6 { margin: 0; color: var(--on-surface-strong); font-weight: var(--weight-semibold); }
-h1 { font-size: var(--type-display); line-height: var(--leading-tight); letter-spacing: var(--tracking-tight); }
-h2 { font-size: var(--type-headline); line-height: var(--leading-snug); }
-h3 { font-size: var(--type-title); line-height: var(--leading-snug); }
-h4 { font-size: var(--type-subtitle); line-height: var(--leading-snug); font-weight: var(--weight-medium); }
+/* ─────────────────────────────────────────────
+   AMBIENT AURORA — two slow-drifting blobs
+   These sit fixed behind everything so the glass
+   blur has something atmospheric to filter.
+   ───────────────────────────────────────────── */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.6;
+  will-change: transform;
+}
+body::before {
+  width: 900px;
+  height: 900px;
+  top: -260px;
+  left: -180px;
+  background: radial-gradient(circle at 50% 50%,
+    rgba(96, 165, 250, 0.55) 0%,
+    rgba(96, 165, 250, 0) 70%);
+  animation: auroraDrift1 28s ease-in-out infinite alternate;
+}
+body::after {
+  width: 800px;
+  height: 800px;
+  bottom: -240px;
+  right: -160px;
+  background: radial-gradient(circle at 50% 50%,
+    rgba(165, 180, 252, 0.55) 0%,
+    rgba(165, 180, 252, 0) 70%);
+  animation: auroraDrift2 32s ease-in-out infinite alternate;
+}
+@keyframes auroraDrift1 {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  100% { transform: translate3d(120px, 80px, 0) scale(1.1); }
+}
+@keyframes auroraDrift2 {
+  0%   { transform: translate3d(0, 0, 0) scale(1.05); }
+  100% { transform: translate3d(-100px, -60px, 0) scale(0.95); }
+}
 
-p { margin: 0; color: var(--on-surface); line-height: var(--leading-base); }
-.meta, .muted { color: var(--on-surface-muted); font-size: var(--type-label); }
+/* In dark mode the aurora colors are slightly desaturated so the page
+   still reads as "deep night" rather than "blue spotlight". */
+@media (prefers-color-scheme: dark) {
+  body::before {
+    background: radial-gradient(circle at 50% 50%,
+      rgba(96, 165, 250, 0.32) 0%,
+      rgba(96, 165, 250, 0) 70%);
+    opacity: 0.7;
+  }
+  body::after {
+    background: radial-gradient(circle at 50% 50%,
+      rgba(99, 102, 241, 0.36) 0%,
+      rgba(99, 102, 241, 0) 70%);
+    opacity: 0.7;
+  }
+}
+
+/* Vue mount root must paint above the aurora */
+#app { position: relative; z-index: 1; min-height: 100vh; }
+
+h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  color: var(--aether-ink);
+  font-weight: var(--weight-semibold);
+}
+h1 { font-size: var(--type-display); line-height: var(--leading-tight); letter-spacing: -0.025em; }
+h2 { font-size: var(--type-headline); line-height: var(--leading-snug); letter-spacing: -0.015em; }
+h3 { font-size: var(--type-title); line-height: var(--leading-snug); letter-spacing: -0.01em; }
+h4 { font-size: var(--type-subtitle); line-height: var(--leading-snug); font-weight: var(--weight-medium); letter-spacing: -0.01em; }
+
+p { margin: 0; color: var(--aether-ink-2); line-height: var(--leading-base); }
+.meta, .muted { color: var(--aether-ink-4); font-size: var(--type-caption); }
 .eyebrow {
-  font-size: var(--type-caption);
-  font-weight: var(--weight-medium);
+  font-size: 11px;
+  font-weight: var(--weight-semibold);
   text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
-  color: var(--on-surface-muted);
+  letter-spacing: 0.08em;
+  color: var(--aether-ink-4);
 }
 
 code, pre, .mono {
@@ -369,7 +469,42 @@ code, pre, .mono {
 }
 
 /* ─────────────────────────────────────────────
-   AI HALO — rotating soft rainbow border
+   GLASS UTILITY CLASSES
+   ───────────────────────────────────────────── */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+}
+.glass-lg {
+  background: var(--glass-bg-strong);
+  backdrop-filter: var(--glass-blur-lg);
+  -webkit-backdrop-filter: var(--glass-blur-lg);
+  border: 1px solid rgba(255, 255, 255, 0.70);
+}
+.glass-thin {
+  background: var(--glass-bg-thin);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--aether-line);
+}
+
+/* For users who turn on "Reduce transparency" in OS accessibility,
+   drop the heavy blur — the layout still reads, just without the glass. */
+@media (prefers-reduced-transparency: reduce) {
+  .glass, .glass-lg, .glass-thin {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: var(--aether-page);
+  }
+}
+
+/* ─────────────────────────────────────────────
+   AI HALO — pure colorful glow, no ring (v4)
+   Idle:   nothing
+   Hover:  near + far blooms appear and rotate
+   Active: same blooms, persist while busy
    ───────────────────────────────────────────── */
 .ai-halo {
   position: relative;
@@ -380,32 +515,32 @@ code, pre, .mono {
 .ai-halo::before {
   content: "";
   position: absolute;
-  inset: -4px;
+  inset: -10px;
   border-radius: inherit;
-  padding: 4px;
   background: conic-gradient(from var(--halo-angle, 0deg), var(--halo-stops));
-  -webkit-mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
-  -webkit-mask-composite: xor;
-          mask-composite: exclude;
+  filter: blur(14px);
   z-index: -1;
-  opacity: 0.7;
-  transition: opacity var(--dur-medium) var(--ease-standard);
+  opacity: 0;
+  transition: opacity var(--dur-medium) var(--aether-ease);
 }
 .ai-halo::after {
   content: "";
   position: absolute;
-  inset: -12px;
+  inset: -22px;
   border-radius: inherit;
   background: conic-gradient(from var(--halo-angle, 0deg), var(--halo-stops));
-  filter: blur(18px);
+  filter: blur(30px);
   z-index: -2;
   opacity: 0;
-  transition: opacity var(--dur-medium) var(--ease-standard);
+  transition: opacity var(--dur-medium) var(--aether-ease);
 }
-.ai-halo.active::before,
-.ai-halo:hover::before { opacity: 1; }
-.ai-halo.active::after { opacity: 0.8; }
+.ai-halo:hover::before,
+.ai-halo.active::before { opacity: 0.85; }
+.ai-halo:hover::after,
+.ai-halo.active::after  { opacity: 0.55; }
 
+.ai-halo:hover::before,
+.ai-halo:hover::after,
 .ai-halo.active::before,
 .ai-halo.active::after {
   animation: aiHaloSpin var(--dur-halo) linear infinite;
@@ -416,25 +551,23 @@ code, pre, .mono {
 }
 
 /* ─────────────────────────────────────────────
-   SPRING UTILITY ANIMATIONS
-   Drop these classes on any element for the
-   Airbnb-flavored entrance.
+   Shared entrance animations (used in scoped CSS too)
    ───────────────────────────────────────────── */
-@keyframes drFadeUp {
-  from { opacity: 0; transform: translateY(10px); }
+@keyframes aetherRise {
+  from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: none; }
 }
-@keyframes drPopIn {
-  0%   { opacity: 0; transform: scale(0.85); }
-  60%  { opacity: 1; transform: scale(1.04); }
-  100% { opacity: 1; transform: scale(1); }
+@keyframes aetherFadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
 }
-@keyframes drBounceIn {
-  0%   { opacity: 0; transform: translateY(14px) scale(0.94); }
-  55%  { opacity: 1; transform: translateY(-3px) scale(1.02); }
-  80%  { transform: translateY(1px) scale(0.995); }
-  100% { transform: translateY(0) scale(1); }
+@keyframes aetherFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
 }
-.dr-fade-up { animation: drFadeUp var(--dur-long) var(--ease-spring-soft) both; }
-.dr-pop     { animation: drPopIn  var(--dur-long) var(--ease-spring)      both; }
-.dr-bounce  { animation: drBounceIn var(--dur-xlong) var(--ease-spring)   both; }
+@keyframes aetherSpin { to { transform: rotate(360deg); } }
+
+/* Back-compat aliases for any legacy `dr-*` class usage in scoped CSS */
+.dr-fade-up { animation: aetherFadeUp var(--dur-long) var(--aether-ease) both; }
+.dr-pop     { animation: aetherFadeIn var(--dur-long) var(--aether-ease) both; }
+.dr-bounce  { animation: aetherRise   var(--dur-xlong) var(--aether-ease) both; }
