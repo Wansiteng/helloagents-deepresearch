@@ -334,6 +334,16 @@
             </span>
           </div>
           <div class="status-controls">
+            <button
+              v-if="loading"
+              type="button"
+              class="secondary-btn status-stop-btn"
+              @click="cancelResearch"
+              title="强制停止当前研究"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">stop_circle</span>
+              停止研究
+            </button>
             <button class="secondary-btn" @click="logsCollapsed = !logsCollapsed">
               {{ logsCollapsed ? "展开流程" : "收起流程" }}
             </button>
@@ -2153,6 +2163,22 @@ select:focus {
 }
 .status-history-btn .material-symbols-outlined {
   font-size: 16px;
+}
+
+/* Force-stop the running SSE — danger-tinted so it's unmistakable */
+.status-stop-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-danger);
+  border-color: var(--border-danger);
+  color: var(--fg-danger);
+}
+.status-stop-btn .material-symbols-outlined { font-size: 16px; }
+.status-stop-btn:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: var(--fg-danger);
 }
 
 .status-chip {

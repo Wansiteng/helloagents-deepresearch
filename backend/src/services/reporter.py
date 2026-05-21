@@ -27,7 +27,7 @@ from hello_agents import ToolAwareSimpleAgent
 from config import Configuration
 from models import SummaryState
 from prompts import REPORT_SECTIONS, get_current_date, report_section_writer_instructions
-from services.text_processing import strip_tool_calls
+from services.text_processing import collapse_repetition, strip_tool_calls
 from utils import strip_thinking_tokens
 
 if TYPE_CHECKING:
@@ -188,7 +188,7 @@ class WriterAgent:
         if self._config.strip_thinking_tokens:
             text = strip_thinking_tokens(text)
 
-        return strip_tool_calls(text).strip()
+        return collapse_repetition(strip_tool_calls(text).strip())
 
     # ------------------------------------------------------------------
     # 传统全量提示策略（向后兼容）
@@ -205,7 +205,7 @@ class WriterAgent:
         if self._config.strip_thinking_tokens:
             report_text = strip_thinking_tokens(report_text)
 
-        report_text = strip_tool_calls(report_text).strip()
+        report_text = collapse_repetition(strip_tool_calls(report_text).strip())
         return report_text or "报告生成失败，请检查输入。"
 
     def _build_fullcontext_prompt(self, state: SummaryState) -> str:

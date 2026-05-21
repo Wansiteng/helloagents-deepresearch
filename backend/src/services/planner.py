@@ -85,6 +85,8 @@ class PlannerAgent:
             if not query:
                 query = state.research_topic
 
+            query = self._anchor_query(state.research_topic, query)
+
             task = TodoItem(
                 id=idx,
                 title=title,
@@ -146,6 +148,7 @@ class PlannerAgent:
             query = str(item.get("query") or state.research_topic or "").strip()
             if not query:
                 continue
+            query = self._anchor_query(state.research_topic or "", query)
             new_tasks.append(TodoItem(id=next_id + i, title=title, intent=intent, query=query))
 
         logger.info("Gap assessment: 补充 %d 个任务: %s", len(new_tasks), [t.title for t in new_tasks])
@@ -167,6 +170,43 @@ class PlannerAgent:
                 return [item for item in candidate if isinstance(item, dict)]
 
         return []
+
+    @staticmethod
+    def _anchor_query(topic: str, query: str) -> str:
+        """Ensure the topic's distinctive tokens survive into the search query.
+
+        Small local models occasionally produce a generic ``query`` that
+        strips the proper noun out of the topic — e.g. topic ``宁德时代 BMS``
+        becomes query ``BMS systems architecture``, which then searches the
+        web for *Building* Management Systems, not battery management.
+
+        Rules:
+        - If the topic contains any multi-char CJK substring (≥ 2 Chinese
+          characters in a row — usually a brand or proper noun), **every
+          one of those substrings must appear verbatim in the query**.
+          Otherwise prepend the topic.
+        - Otherwise (pure Latin topic), require at least one Capitalized or
+          all-caps token (≥ 3 chars) from the topic to appear in the query
+          (case-insensitive). Otherwise prepend the topic.
+        """
+        if not topic or not query:
+            return query
+
+        topic = topic.strip()
+
+        cjk_anchors = re.findall(r"[一-鿿]{2,}", topic)
+        if cjk_anchors:
+            if not all(a in query for a in cjk_anchors):
+                return f"{topic} {query}"
+            return query
+
+        latin_anchors = re.findall(r"[A-Z][A-Za-z0-9]{2,}|[A-Z]{2,}", topic)
+        if not latin_anchors:
+            return query
+        query_lower = query.lower()
+        if any(t.lower() in query_lower for t in latin_anchors):
+            return query
+        return f"{topic} {query}"
 
     @staticmethod
     def create_fallback_tasks(state: SummaryState) -> List[TodoItem]:

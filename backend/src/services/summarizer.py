@@ -18,7 +18,7 @@ from models import SummaryState, TodoItem
 from config import Configuration
 from utils import strip_thinking_tokens
 from services.notes import build_note_guidance
-from services.text_processing import strip_tool_calls
+from services.text_processing import collapse_repetition, strip_tool_calls
 
 
 class SummarizerAgent:
@@ -67,6 +67,7 @@ class SummarizerAgent:
             summary_text = strip_thinking_tokens(summary_text)
 
         summary_text = strip_tool_calls(summary_text).strip()
+        summary_text = collapse_repetition(summary_text)
 
         return summary_text or "暂无可用信息"
 
@@ -133,7 +134,7 @@ class SummarizerAgent:
             else:
                 cleaned = visible_output
 
-            return strip_tool_calls(cleaned).strip()
+            return collapse_repetition(strip_tool_calls(cleaned).strip())
 
         return generator(), get_summary
 
