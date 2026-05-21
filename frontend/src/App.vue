@@ -235,14 +235,22 @@
     </div>
 
     <!-- 全屏状态：左右分栏布局 -->
-    <div v-else class="layout layout-fullscreen">
+    <div v-else class="layout layout-fullscreen" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
+      <!-- 折叠后顶部左侧的展开按钮 -->
+      <button
+        v-if="sidebarCollapsed"
+        type="button"
+        class="sidebar-expand-btn"
+        @click="toggleSidebar"
+        title="展开侧边栏"
+        aria-label="展开侧边栏"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">menu_open</span>
+      </button>
+
       <!-- 左侧：研究信息 -->
-      <aside class="sidebar">
+      <aside class="sidebar" :aria-hidden="sidebarCollapsed">
         <div class="sidebar-header">
-          <button class="back-btn" @click="goBack" :disabled="loading">
-            <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
-            返回
-          </button>
           <div class="sidebar-brand">
             <div class="logo logo-sm" aria-hidden="true">
               <div class="logo-grid">
@@ -259,6 +267,16 @@
             </div>
             <h2>深度研究助手</h2>
           </div>
+          <button
+            type="button"
+            class="sidebar-collapse-btn"
+            @click="toggleSidebar"
+            title="收起侧边栏"
+            aria-label="收起侧边栏"
+            :tabindex="sidebarCollapsed ? -1 : 0"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">menu_open</span>
+          </button>
         </div>
 
         <div class="research-info">
@@ -306,9 +324,14 @@
       >
         <header class="status-bar">
           <div class="status-main">
-            <div class="status-chip" :class="{ active: loading }">
-              <span class="dot"></span>
-              {{ loading ? "研究进行中" : "研究流程完成" }}
+            <div class="status-chip" :class="researchPhase">
+              <span
+                v-if="researchPhase === 'complete'"
+                class="material-symbols-outlined status-check"
+                aria-hidden="true"
+              >check_circle</span>
+              <span v-else class="dot"></span>
+              {{ researchPhaseLabel }}
             </div>
             <span class="status-meta">
               任务进度：{{ completedTasks }} / {{ totalTasks || todoTasks.length || 1 }}
@@ -671,6 +694,36 @@ const error = ref("");
 const progressLogs = ref<string[]>([]);
 const logsCollapsed = ref(false);
 const isExpanded = ref(false);
+const sidebarCollapsed = ref(false);
+
+function toggleSidebar(): void {
+  sidebarCollapsed.value = !sidebarCollapsed.value;
+}
+
+/**
+ * Status chip phase:
+ *   - "running": SSE still streaming AND no final report yet
+ *   - "complete": final report arrived (even if stream is still finishing)
+ *   - "idle":    nothing has run yet on this screen
+ *
+ * We key on reportMarkdown (not on loading alone) so the chip flips to
+ * "完成" the moment the report event lands, instead of waiting for the
+ * stream's tail to close.
+ */
+const researchPhase = computed<"running" | "complete" | "idle">(() => {
+  const hasReport = reportMarkdown.value && reportMarkdown.value !== "暂无生成的报告";
+  if (hasReport) return "complete";
+  if (loading.value) return "running";
+  return "idle";
+});
+
+const researchPhaseLabel = computed(() => {
+  switch (researchPhase.value) {
+    case "running":  return "研究进行中";
+    case "complete": return "研究完成";
+    default:         return "等待开始";
+  }
+});
 
 const todoTasks = ref<TodoTaskView[]>([]);
 const activeTaskId = ref<number | null>(null);
@@ -1604,6 +1657,13 @@ onBeforeUnmount(() => {
   height: 100vh;
   max-width: 100%;
   align-items: stretch;
+  /* Modern browsers (Chrome 119+, Firefox 115+, Safari 17+) animate
+     grid-template-columns; on older browsers the change is instant. */
+  transition: grid-template-columns 420ms var(--aether-ease);
+}
+
+.layout-fullscreen.sidebar-collapsed {
+  grid-template-columns: 0px 1fr;
 }
 
 /* ── Landing composition ────────────────────────────────── */
@@ -2109,11 +2169,23 @@ select:focus {
   height: 7px;
   border-radius: 50%;
   background: var(--aether-ink-4);
+  transition: background var(--dur-medium) var(--aether-ease);
 }
 
-.status-chip.active .dot {
+.status-chip.running .dot {
   background: var(--primary-500);
   animation: aetherPulse 2s var(--aether-ease) infinite;
+}
+
+/* Completed: emerald success styling — clearly distinct from "running" */
+.status-chip.complete {
+  background: var(--bg-success);
+  color: var(--fg-success);
+  border-color: var(--border-success);
+}
+.status-chip .status-check {
+  font-size: 16px;
+  color: currentColor;
 }
 
 .status-meta {
@@ -2743,15 +2815,98 @@ select:focus {
   flex-direction: column;
   gap: 24px;
   height: calc(100vh - 48px);
-  overflow-y: auto;
+  overflow: hidden auto;
   position: sticky;
   top: 24px;
+  transition:
+    opacity var(--dur-medium) var(--aether-ease),
+    transform var(--dur-long) var(--aether-ease),
+    margin var(--dur-long) var(--aether-ease),
+    padding var(--dur-long) var(--aether-ease),
+    box-shadow var(--dur-long) var(--aether-ease);
+}
+
+/* Collapsed: fade the panel, slide it slightly left, and zero out the
+   padding/margin so the grid 0-column transition reads as a real
+   "drawer closing" instead of a sudden cut. */
+.layout-fullscreen.sidebar-collapsed .sidebar {
+  opacity: 0;
+  transform: translateX(-12px);
+  margin-left: 0;
+  margin-right: 0;
+  padding-left: 0;
+  padding-right: 0;
+  pointer-events: none;
+  box-shadow: none;
 }
 
 .sidebar-header {
   display: flex;
-  flex-direction: column;
-  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sidebar-collapse-btn {
+  width: 36px;
+  height: 36px;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: var(--aether-ink-3);
+  font-family: inherit;
+  cursor: pointer;
+  transition: background var(--dur-medium) var(--aether-ease),
+    color var(--dur-medium) var(--aether-ease),
+    border-color var(--dur-medium) var(--aether-ease),
+    transform var(--dur-medium) var(--aether-ease);
+}
+.sidebar-collapse-btn .material-symbols-outlined { font-size: 20px; }
+.sidebar-collapse-btn:hover {
+  background: rgba(10, 14, 26, 0.05);
+  color: var(--aether-ink);
+}
+.sidebar-collapse-btn:active { transform: scale(0.94); }
+
+/* Floating "expand sidebar" FAB — only shown when sidebar is collapsed */
+.sidebar-expand-btn {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  width: 40px;
+  height: 40px;
+  display: inline-grid;
+  place-items: center;
+  z-index: 100;
+  background: var(--glass-bg-strong);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  border-radius: 12px;
+  color: var(--aether-ink-2);
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: var(--soft-1);
+  transition: background var(--dur-medium) var(--aether-ease),
+    box-shadow var(--dur-medium) var(--aether-ease),
+    transform var(--dur-medium) var(--aether-ease);
+  animation: aetherFadeIn var(--dur-long) var(--aether-ease) both;
+}
+.sidebar-expand-btn .material-symbols-outlined {
+  font-size: 20px;
+  /* Mirror the menu_open icon so the arrow points right (= "open") */
+  transform: scaleX(-1);
+}
+.sidebar-expand-btn:hover {
+  background: var(--surface-container-highest);
+  box-shadow: var(--soft-2);
+  transform: translateY(-1px);
+}
+.sidebar-expand-btn:active {
+  transform: translateY(0) scale(0.96);
 }
 
 .sidebar-brand {
@@ -2869,8 +3024,8 @@ select:focus {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding-top: 20px;
-  border-top: 1px solid var(--aether-line);
+  padding-top: 4px;
+  /* (border-top removed — the divider felt heavy against the glass) */
 }
 
 .new-research-btn {
@@ -2965,11 +3120,10 @@ select:focus {
   transform: translateY(0) scale(0.96);
 }
 
-.expanded .history-toggle-btn {
-  top: 16px;
-  right: auto;
-  left: 24px;
-}
+/* In v4.2 the history toggle stays top-right in every state — the
+   back-button slot is now occupied by the sidebar collapse control,
+   and the floating expand button (when sidebar is collapsed) lives
+   on the LEFT, so the two FABs no longer collide. */
 
 /* ── Report header with export actions ─────────────────── */
 .report-block {
