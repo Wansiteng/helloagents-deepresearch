@@ -1,6 +1,10 @@
 <template>
   <main class="app-shell" :class="{ expanded: isExpanded }">
-    <button class="history-toggle-btn" @click="isHistoryOpen = true">
+    <button
+      v-if="!isExpanded"
+      class="history-toggle-btn"
+      @click="isHistoryOpen = true"
+    >
       <span class="material-symbols-outlined" aria-hidden="true">history</span>
       历史记录
     </button>
@@ -341,6 +345,15 @@
           <div class="status-controls">
             <button class="secondary-btn" @click="logsCollapsed = !logsCollapsed">
               {{ logsCollapsed ? "展开流程" : "收起流程" }}
+            </button>
+            <button
+              type="button"
+              class="secondary-btn status-history-btn"
+              @click="isHistoryOpen = true"
+              title="查看历史记录"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">history</span>
+              历史记录
             </button>
           </div>
         </header>
@@ -2145,6 +2158,17 @@ select:focus {
 .status-controls {
   display: flex;
   gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.status-history-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.status-history-btn .material-symbols-outlined {
+  font-size: 16px;
 }
 
 .status-chip {
@@ -3222,14 +3246,15 @@ select:focus {
 
 .report-toc li a {
   display: block;
-  padding: 5px 12px;
-  border-radius: 10px;
+  padding: 6px 12px;
+  border-radius: 999px;
   color: var(--aether-ink-3);
   text-decoration: none;
-  border-left: 2px solid transparent;
-  transition: background 200ms var(--aether-ease),
-    color 200ms var(--aether-ease),
-    border-color 200ms var(--aether-ease);
+  border: 1px solid transparent;
+  transition: background 220ms var(--aether-ease),
+    color 220ms var(--aether-ease),
+    border-color 220ms var(--aether-ease),
+    box-shadow 220ms var(--aether-ease);
 }
 
 .report-toc li a:hover {
@@ -3237,10 +3262,13 @@ select:focus {
   color: var(--aether-ink);
 }
 
+/* Active item: sapphire-tinted glass pill — matches the search-chip
+   active recipe (rgba(37,99,235,0.08) + border + primary-600 text).
+   No more left rail. */
 .report-toc li.active > a {
-  background: rgba(37, 99, 235, 0.08);
+  background: rgba(37, 99, 235, 0.10);
   color: var(--primary-600);
-  border-left-color: var(--primary-500);
+  border-color: rgba(37, 99, 235, 0.18);
   font-weight: 500;
 }
 
