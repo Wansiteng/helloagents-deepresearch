@@ -2132,6 +2132,15 @@ select:focus {
   flex-direction: column;
   gap: 28px;
   position: relative;
+  transition: padding 420ms var(--aether-ease);
+}
+
+/* When the sidebar is collapsed the floating expand FAB lives at
+   top: 24, left: 24 (40px wide). Push the result panel's left padding
+   in so its first content row (the status-bar) doesn't sit underneath
+   the FAB. Animates in sync with the sidebar's own collapse. */
+.layout-fullscreen.sidebar-collapsed .panel-result {
+  padding-left: 88px;
 }
 
 .status-bar {
