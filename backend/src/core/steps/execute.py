@@ -72,7 +72,9 @@ class ExecuteStep:
 
         try:
             query = KnowledgeQuery(
-                text=task.query, intent=task.intent, max_results=5
+                text=task.query,
+                intent=task.intent,
+                max_results=self._config.search_results_per_task,
             )
             chunks = await self._gather_chunks(query)
 

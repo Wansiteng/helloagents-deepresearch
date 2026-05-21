@@ -121,6 +121,17 @@ class Configuration(BaseModel):
         title="Vector Top K",
         description="Number of top similar chunks to retrieve from vector store",
     )
+    search_results_per_task: int = Field(
+        default=12,
+        title="Search Results Per Task",
+        description=(
+            "Web pages (and per-source chunks) requested for each research "
+            "sub-task. Higher = deeper coverage but slower per task and "
+            "longer summarizer prompts (which can hit local-LLM context "
+            "limits). Sensible range: 5-20. Default 12 is tuned for a "
+            "'deep' feel without blowing up token budgets."
+        ),
+    )
     use_open_source_mode: bool = Field(
         default=False,
         title="Use Open-Source Model Mode",
@@ -286,6 +297,7 @@ class Configuration(BaseModel):
             "vector_chunk_size": os.getenv("VECTOR_CHUNK_SIZE"),
             "vector_chunk_overlap": os.getenv("VECTOR_CHUNK_OVERLAP"),
             "vector_top_k": os.getenv("VECTOR_TOP_K"),
+            "search_results_per_task": os.getenv("SEARCH_RESULTS_PER_TASK"),
             "use_open_source_mode": os.getenv("USE_OPEN_SOURCE_MODE"),
             "open_source_model_max_retries": os.getenv("OPEN_SOURCE_MODEL_MAX_RETRIES"),
             "no_think_mode": os.getenv("NO_THINK_MODE"),
