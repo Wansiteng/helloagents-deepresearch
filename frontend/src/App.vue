@@ -43,9 +43,8 @@
               ref="topicEl"
               class="search-bar-input"
               rows="1"
-              placeholder="输入研究主题，按 Enter 开始"
+              placeholder="输入研究主题"
               required
-              @keydown="onTopicKeydown"
               @input="autosizeTopic"
             ></textarea>
 
@@ -60,10 +59,8 @@
                   :aria-expanded="openMenu === 'engine'"
                   aria-haspopup="menu"
                 >
-                  <span class="material-symbols-outlined" aria-hidden="true">travel_explore</span>
                   <span class="search-chip-label">搜索</span>
                   <span class="search-chip-value">{{ engineLabel }}</span>
-                  <span class="material-symbols-outlined search-chip-caret" aria-hidden="true">expand_more</span>
                 </button>
                 <div v-if="openMenu === 'engine'" class="popover popover-left" role="menu">
                   <div class="popover-head">搜索引擎</div>
@@ -97,10 +94,8 @@
                   :aria-expanded="openMenu === 'llm'"
                   aria-haspopup="menu"
                 >
-                  <span class="material-symbols-outlined" aria-hidden="true">memory</span>
                   <span class="search-chip-label">模型</span>
                   <span class="search-chip-value">{{ llmLabel }}</span>
-                  <span class="material-symbols-outlined search-chip-caret" aria-hidden="true">expand_more</span>
                 </button>
                 <div v-if="openMenu === 'llm'" class="popover popover-right popover-llm" role="menu">
                   <header class="popover-head popover-head-row">
@@ -206,10 +201,6 @@
                 </button>
               </span>
             </div>
-          </div>
-
-          <div class="search-hint" aria-hidden="true">
-            按 <kbd>Enter</kbd> 开始研究 · <kbd>Shift</kbd>+<kbd>Enter</kbd> 换行
           </div>
 
           <div v-if="error" class="alert alert-error search-error" role="alert">
@@ -801,13 +792,6 @@ function selectModel(m: string): void {
   closeMenu();
 }
 
-function onTopicKeydown(e: KeyboardEvent): void {
-  // Enter submits; Shift+Enter is a real newline. Ignore IME composition.
-  if (e.key === "Enter" && !e.shiftKey && !(e as any).isComposing) {
-    e.preventDefault();
-    handleSubmit();
-  }
-}
 
 function autosizeTopic(): void {
   const el = topicEl.value;
@@ -3614,13 +3598,6 @@ select:focus {
   color: var(--primary-500);
   opacity: 0.85;
 }
-.search-chip-caret {
-  transition: transform 200ms var(--aether-ease);
-  opacity: 0.6;
-}
-.search-chip.active .search-chip-caret {
-  transform: rotate(180deg);
-}
 
 /* ── Popovers — small frosted menus anchored under the chip */
 .popover {
@@ -3797,25 +3774,7 @@ select:focus {
 }
 .search-submit:disabled { opacity: 0.6; cursor: not-allowed; }
 
-/* ── Hint & error rows below the bar ────────────────────── */
-.search-hint {
-  text-align: center;
-  font-size: 12px;
-  color: var(--aether-ink-4);
-  letter-spacing: 0;
-}
-.search-hint kbd {
-  display: inline-block;
-  padding: 1px 7px;
-  border-radius: 6px;
-  background: var(--surface);
-  border: 1px solid var(--aether-line);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--aether-ink-2);
-  margin: 0 2px;
-}
-
+/* ── Status / error rows below the bar ──────────────────── */
 .search-status {
   text-align: center;
 }
