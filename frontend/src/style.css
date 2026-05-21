@@ -128,6 +128,7 @@
   /* Decelerated easing — no overshoot */
   --aether-ease:      cubic-bezier(0.22, 1, 0.36, 1);
   --aether-ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+  --halo-ease:        cubic-bezier(0.16, 1, 0.3, 1); /* fast start, long decelerating tail */
 
   /* ─────────────────────────────────────────────
      SEMANTIC TOKENS (kept for component back-compat —
@@ -514,6 +515,7 @@ code, pre, .mono {
   border-radius: var(--radius-pill);
   isolation: isolate;
 }
+/* Inner bloom — closer-in, faster diffusion */
 .ai-halo::before {
   content: "";
   position: absolute;
@@ -523,8 +525,13 @@ code, pre, .mono {
   filter: blur(14px);
   z-index: -1;
   opacity: 0;
-  transition: opacity var(--dur-medium) var(--aether-ease);
+  transform: scale(0.55);
+  transform-origin: center;
+  transition:
+    opacity 700ms var(--halo-ease),
+    transform 900ms var(--halo-ease);
 }
+/* Outer bloom — slower, wider, slightly delayed for a true diffusion feel */
 .ai-halo::after {
   content: "";
   position: absolute;
@@ -534,12 +541,16 @@ code, pre, .mono {
   filter: blur(30px);
   z-index: -2;
   opacity: 0;
-  transition: opacity var(--dur-medium) var(--aether-ease);
+  transform: scale(0.5);
+  transform-origin: center;
+  transition:
+    opacity 1100ms var(--halo-ease) 80ms,
+    transform 1400ms var(--halo-ease) 80ms;
 }
 .ai-halo:hover::before,
-.ai-halo.active::before { opacity: 0.85; }
+.ai-halo.active::before { opacity: 0.85; transform: scale(1); }
 .ai-halo:hover::after,
-.ai-halo.active::after  { opacity: 0.55; }
+.ai-halo.active::after  { opacity: 0.55; transform: scale(1); }
 
 .ai-halo:hover::before,
 .ai-halo:hover::after,

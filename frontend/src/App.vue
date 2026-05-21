@@ -30,133 +30,207 @@
           </div>
         </header>
 
-        <form class="form" @submit.prevent="handleSubmit">
-          <label class="field">
-            <span>研究主题</span>
+        <form class="search-form" @submit.prevent="handleSubmit">
+          <div class="search-bar" :class="{ 'is-error': !!error }">
+            <span class="material-symbols-outlined search-bar-icon" aria-hidden="true">search</span>
+
             <textarea
               v-model="form.topic"
-              placeholder="例如：探索多模态模型在 2025 年的关键突破"
-              rows="4"
+              ref="topicEl"
+              class="search-bar-input"
+              rows="1"
+              placeholder="输入研究主题，按 Enter 开始"
               required
+              @keydown="onTopicKeydown"
+              @input="autosizeTopic"
             ></textarea>
-          </label>
 
-          <section class="options">
-            <label class="field option">
-              <span>搜索引擎</span>
-              <select v-model="form.searchApi">
-                <option value="">沿用后端配置</option>
-                <option
-                  v-for="option in searchOptions"
-                  :key="option"
-                  :value="option"
+            <div class="search-bar-tools">
+              <!-- 搜索引擎 chip + 弹层 -->
+              <div class="search-pop-wrap" ref="engineWrapEl">
+                <button
+                  type="button"
+                  class="search-chip"
+                  :class="{ active: openMenu === 'engine' }"
+                  @click="toggleMenu('engine')"
+                  :aria-expanded="openMenu === 'engine'"
+                  aria-haspopup="menu"
                 >
-                  {{ option }}
-                </option>
-              </select>
-            </label>
-          </section>
-
-          <!-- 本地 LLM 选择 -->
-          <section class="llm-probe-section">
-            <div class="llm-probe-header">
-              <span class="llm-probe-title">本地 LLM</span>
-              <button
-                type="button"
-                class="probe-refresh-btn"
-                :disabled="probeLoading"
-                @click="refreshProbe"
-                :title="probeLoading ? '探测中…' : '重新探测本地服务'"
-              >
-                <span
-                  class="material-symbols-outlined probe-refresh-icon"
-                  :class="{ spinning: probeLoading }"
-                  aria-hidden="true"
-                >refresh</span>
-                {{ probeLoading ? "探测中…" : "刷新" }}
-              </button>
-            </div>
-
-            <p v-if="probeError" class="probe-error">{{ probeError }}</p>
-
-            <template v-else-if="!probeLoading">
-              <div v-if="runningProviders.length === 0" class="probe-empty">
-                未检测到本地 LLM 服务（Ollama / LM Studio / mlx-lm），将沿用后端配置。
+                  <span class="material-symbols-outlined" aria-hidden="true">travel_explore</span>
+                  <span class="search-chip-label">搜索</span>
+                  <span class="search-chip-value">{{ engineLabel }}</span>
+                  <span class="material-symbols-outlined search-chip-caret" aria-hidden="true">expand_more</span>
+                </button>
+                <div v-if="openMenu === 'engine'" class="popover popover-left" role="menu">
+                  <div class="popover-head">搜索引擎</div>
+                  <button
+                    v-for="opt in engineOptions"
+                    :key="opt.id"
+                    type="button"
+                    class="popover-item"
+                    :class="{ selected: form.searchApi === opt.id }"
+                    role="menuitemradio"
+                    :aria-checked="form.searchApi === opt.id"
+                    @click="selectEngine(opt.id)"
+                  >
+                    <span>{{ opt.label }}</span>
+                    <span
+                      v-if="form.searchApi === opt.id"
+                      class="material-symbols-outlined"
+                      aria-hidden="true"
+                    >check</span>
+                  </button>
+                </div>
               </div>
 
-              <div v-else class="llm-selects">
-                <label class="field option">
-                  <span>服务</span>
-                  <select v-model="form.llmProvider" @change="form.llmModel = modelsForProvider[0] ?? ''">
-                    <option value="">沿用后端配置</option>
-                    <option
-                      v-for="key in runningProviders"
-                      :key="key"
-                      :value="key"
+              <!-- 本地 LLM chip + 弹层 -->
+              <div class="search-pop-wrap" ref="llmWrapEl">
+                <button
+                  type="button"
+                  class="search-chip"
+                  :class="{ active: openMenu === 'llm' }"
+                  @click="toggleMenu('llm')"
+                  :aria-expanded="openMenu === 'llm'"
+                  aria-haspopup="menu"
+                >
+                  <span class="material-symbols-outlined" aria-hidden="true">memory</span>
+                  <span class="search-chip-label">模型</span>
+                  <span class="search-chip-value">{{ llmLabel }}</span>
+                  <span class="material-symbols-outlined search-chip-caret" aria-hidden="true">expand_more</span>
+                </button>
+                <div v-if="openMenu === 'llm'" class="popover popover-right popover-llm" role="menu">
+                  <header class="popover-head popover-head-row">
+                    <span>本地 LLM</span>
+                    <button
+                      type="button"
+                      class="popover-refresh"
+                      :disabled="probeLoading"
+                      @click="refreshProbe"
                     >
-                      {{ PROVIDER_LABELS[key] ?? key }}
-                    </option>
-                  </select>
-                </label>
+                      <span
+                        class="material-symbols-outlined"
+                        :class="{ spinning: probeLoading }"
+                        aria-hidden="true"
+                      >refresh</span>
+                      {{ probeLoading ? '探测中' : '刷新' }}
+                    </button>
+                  </header>
 
-                <label class="field option" v-if="form.llmProvider">
-                  <span>模型</span>
-                  <select v-model="form.llmModel">
-                    <template v-if="modelsForProvider.length > 0">
-                      <option
-                        v-for="m in modelsForProvider"
-                        :key="m"
-                        :value="m"
-                      >{{ m }}</option>
-                    </template>
+                  <p v-if="probeError" class="popover-error">{{ probeError }}</p>
+
+                  <template v-else-if="!probeLoading">
+                    <div v-if="runningProviders.length === 0" class="popover-empty">
+                      未检测到本地 LLM 服务（Ollama / LM Studio / mlx-lm），将沿用后端配置。
+                    </div>
                     <template v-else>
-                      <option value="">（服务已运行，当前无可列出的模型）</option>
+                      <div class="popover-section-eyebrow">服务</div>
+                      <button
+                        type="button"
+                        class="popover-item"
+                        :class="{ selected: form.llmProvider === '' }"
+                        @click="selectProvider('')"
+                      >
+                        <span>沿用后端配置</span>
+                        <span
+                          v-if="form.llmProvider === ''"
+                          class="material-symbols-outlined"
+                          aria-hidden="true"
+                        >check</span>
+                      </button>
+                      <button
+                        v-for="key in runningProviders"
+                        :key="key"
+                        type="button"
+                        class="popover-item"
+                        :class="{ selected: form.llmProvider === key }"
+                        @click="selectProvider(key)"
+                      >
+                        <span>{{ PROVIDER_LABELS[key] ?? key }}</span>
+                        <span
+                          v-if="form.llmProvider === key"
+                          class="material-symbols-outlined"
+                          aria-hidden="true"
+                        >check</span>
+                      </button>
+
+                      <template v-if="form.llmProvider && modelsForProvider.length > 0">
+                        <div class="popover-divider" aria-hidden="true"></div>
+                        <div class="popover-section-eyebrow">模型</div>
+                        <button
+                          v-for="m in modelsForProvider"
+                          :key="m"
+                          type="button"
+                          class="popover-item"
+                          :class="{ selected: form.llmModel === m }"
+                          @click="selectModel(m)"
+                        >
+                          <span>{{ m }}</span>
+                          <span
+                            v-if="form.llmModel === m"
+                            class="material-symbols-outlined"
+                            aria-hidden="true"
+                          >check</span>
+                        </button>
+                      </template>
+                      <p
+                        v-else-if="form.llmProvider"
+                        class="popover-empty"
+                      >该服务下当前无可列出的模型</p>
                     </template>
-                  </select>
-                </label>
+                  </template>
+
+                  <div v-else class="popover-loading">
+                    <span class="material-symbols-outlined spinner-sm" aria-hidden="true">progress_activity</span>
+                    正在探测本地 LLM 服务…
+                  </div>
+                </div>
               </div>
-            </template>
 
-            <div v-else class="probe-loading">
-              <span class="material-symbols-outlined spinner-sm" aria-hidden="true">progress_activity</span>
-              正在探测本地 LLM 服务…
+              <!-- AI 提交 -->
+              <span class="ai-halo" :class="{ active: loading }">
+                <button
+                  class="search-submit"
+                  type="submit"
+                  :disabled="loading || preflightChecking"
+                >
+                  <span class="material-symbols-outlined" aria-hidden="true">
+                    {{ (loading || preflightChecking) ? 'auto_awesome' : 'arrow_forward' }}
+                  </span>
+                  <span class="search-submit-label">
+                    {{ preflightChecking ? '检测中' : loading ? '研究中' : '开始研究' }}
+                  </span>
+                </button>
+              </span>
             </div>
-          </section>
+          </div>
 
-          <div class="form-actions">
-            <div class="ai-halo" :class="{ active: loading }">
-              <button class="submit" type="submit" :disabled="loading || preflightChecking">
-                <span class="submit-label">
-                  <span
-                    v-if="loading || preflightChecking"
-                    class="material-symbols-outlined spinner"
-                    aria-hidden="true"
-                  >progress_activity</span>
-                  {{ preflightChecking ? "检测模型中…" : loading ? "研究进行中..." : "开始研究" }}
-                </span>
-              </button>
+          <div class="search-hint" aria-hidden="true">
+            按 <kbd>Enter</kbd> 开始研究 · <kbd>Shift</kbd>+<kbd>Enter</kbd> 换行
+          </div>
+
+          <div v-if="error" class="alert alert-error search-error" role="alert">
+            <span class="material-symbols-outlined filled" aria-hidden="true">error</span>
+            <div>
+              <p class="search-error-msg">{{ error }}</p>
+              <p
+                v-if="preflightHint"
+                class="search-error-hint"
+                v-html="preflightHint.replace(/\n/g, '<br/>')"
+              ></p>
             </div>
+          </div>
+          <p v-else-if="loading" class="search-status hint muted">
+            正在收集线索与证据，实时进展见右侧区域。
+          </p>
+
+          <div v-if="loading" class="search-cancel-row">
             <button
-              v-if="loading"
               type="button"
               class="secondary-btn"
               @click="cancelResearch"
-            >
-              取消研究
-            </button>
+            >取消研究</button>
           </div>
         </form>
-
-        <div v-if="error" class="error-block">
-          <p class="error-chip">
-            <span class="material-symbols-outlined" aria-hidden="true">error</span>
-            {{ error }}
-          </p>
-          <p v-if="preflightHint" class="preflight-hint" v-html="preflightHint.replace(/\n/g, '<br/>')"></p>
-        </div>
-        <p v-else-if="loading" class="hint muted">
-          正在收集线索与证据，实时进展见右侧区域。
-        </p>
       </section>
     </div>
 
@@ -585,6 +659,8 @@ async function refreshProbe() {
 
 onMounted(() => {
   refreshProbe();
+  document.addEventListener("click", onDocClick);
+  document.addEventListener("keydown", onDocKeydown);
 });
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -614,6 +690,76 @@ const searchOptions = [
   "perplexity",
   "searxng"
 ];
+
+// ── Landing search bar — chip popovers + keyboard handling ─────────────
+const openMenu = ref<null | "engine" | "llm">(null);
+const topicEl = ref<HTMLTextAreaElement | null>(null);
+const engineWrapEl = ref<HTMLElement | null>(null);
+const llmWrapEl = ref<HTMLElement | null>(null);
+
+const engineOptions = computed(() => [
+  { id: "", label: "默认" },
+  ...searchOptions.map((id) => ({ id, label: id })),
+]);
+
+const engineLabel = computed(() => {
+  const found = engineOptions.value.find((o) => o.id === form.searchApi);
+  return found ? found.label : "默认";
+});
+
+const llmLabel = computed(() => {
+  if (!form.llmProvider) return "默认";
+  const provider = PROVIDER_LABELS[form.llmProvider] ?? form.llmProvider;
+  return form.llmModel ? `${provider} · ${form.llmModel}` : provider;
+});
+
+function toggleMenu(k: "engine" | "llm"): void {
+  openMenu.value = openMenu.value === k ? null : k;
+}
+function closeMenu(): void {
+  openMenu.value = null;
+}
+
+function selectEngine(id: string): void {
+  form.searchApi = id;
+  closeMenu();
+}
+function selectProvider(id: string): void {
+  form.llmProvider = id;
+  // Reset model when provider changes (matches the original select onChange)
+  form.llmModel = id ? (modelsForProvider.value[0] ?? "") : "";
+  if (!id) closeMenu();
+}
+function selectModel(m: string): void {
+  form.llmModel = m;
+  closeMenu();
+}
+
+function onTopicKeydown(e: KeyboardEvent): void {
+  // Enter submits; Shift+Enter is a real newline. Ignore IME composition.
+  if (e.key === "Enter" && !e.shiftKey && !(e as any).isComposing) {
+    e.preventDefault();
+    handleSubmit();
+  }
+}
+
+function autosizeTopic(): void {
+  const el = topicEl.value;
+  if (!el) return;
+  el.style.height = "auto";
+  el.style.height = Math.min(96, el.scrollHeight) + "px";
+}
+
+function onDocClick(e: MouseEvent): void {
+  if (!openMenu.value) return;
+  const target = e.target as Node;
+  if (engineWrapEl.value?.contains(target)) return;
+  if (llmWrapEl.value?.contains(target)) return;
+  closeMenu();
+}
+function onDocKeydown(e: KeyboardEvent): void {
+  if (e.key === "Escape" && openMenu.value) closeMenu();
+}
 
 const TASK_STATUS_LABEL: Record<string, string> = {
   pending: "待执行",
@@ -1406,6 +1552,8 @@ onBeforeUnmount(() => {
     tocObserver.disconnect();
     tocObserver = null;
   }
+  document.removeEventListener("click", onDocClick);
+  document.removeEventListener("keydown", onDocKeydown);
 });
 </script>
 
@@ -3124,5 +3272,417 @@ select:focus {
 @media (max-width: 600px) {
   .options { flex-direction: column; }
   .status-meta { font-size: 12px; }
+}
+
+/* ============================================================
+   v4.1 — Landing hero scale-up + Google-style search bar
+============================================================ */
+
+/* Landing composition widens to 820px in v4.1 */
+.landing { max-width: 820px; }
+
+/* Hero logo bumps to 56px when it sits inside the landing head */
+.landing-head .logo {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  padding: 12px;
+}
+.landing-head .logo .logo-grid {
+  grid-template-columns: repeat(3, 9px);
+  grid-template-rows: repeat(3, 9px);
+  gap: 2.5px;
+}
+.landing-head .logo .logo-grid > i {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+
+/* ── Search bar — the pill ───────────────────────────────── */
+.search-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+}
+
+.search-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 14px 14px 24px;
+  background: var(--glass-bg-strong);
+  backdrop-filter: var(--glass-blur-lg);
+  -webkit-backdrop-filter: var(--glass-blur-lg);
+  border: var(--glass-border);
+  border-radius: 999px;
+  box-shadow: var(--soft-3);
+  transition:
+    box-shadow 260ms var(--aether-ease),
+    border-color 260ms var(--aether-ease),
+    background 260ms var(--aether-ease);
+}
+.search-bar:hover {
+  box-shadow: var(--soft-3), 0 0 0 4px rgba(37, 99, 235, 0.06);
+}
+.search-bar:focus-within {
+  border-color: rgba(37, 99, 235, 0.35);
+  box-shadow: var(--soft-3), 0 0 0 5px rgba(37, 99, 235, 0.14);
+  background: var(--surface-container-highest);
+}
+.search-bar.is-error {
+  border-color: rgba(239, 68, 68, 0.4);
+  box-shadow: var(--soft-3), 0 0 0 5px rgba(239, 68, 68, 0.12);
+}
+
+.search-bar-icon {
+  color: var(--aether-ink-4);
+  flex-shrink: 0;
+  font-size: 22px;
+}
+
+/* The textarea is styled like a single-line field but grows to 96px */
+.search-bar-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 8px 0;
+  font-family: inherit;
+  font-size: 17px;
+  letter-spacing: -0.01em;
+  color: var(--aether-ink);
+  line-height: 1.4;
+  resize: none;
+  min-height: 28px;
+  max-height: 96px;
+  outline: none;
+  /* Override the global textarea recipe in scoped CSS above */
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  letter-spacing: -0.01em;
+  transition: none;
+}
+.search-bar-input::placeholder {
+  color: var(--aether-ink-4);
+}
+.search-bar-input:focus,
+.search-bar-input:hover {
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+  border-color: transparent;
+}
+
+.search-bar-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* ── Chip buttons inside the bar ────────────────────────── */
+.search-pop-wrap {
+  position: relative;
+}
+
+.search-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  height: 40px;
+  border-radius: 999px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--aether-ink-3);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  transition:
+    background 200ms var(--aether-ease),
+    color 200ms var(--aether-ease),
+    border-color 200ms var(--aether-ease);
+}
+.search-chip:hover {
+  background: rgba(10, 14, 26, 0.05);
+  color: var(--aether-ink);
+}
+.search-chip.active {
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--primary-600);
+  border-color: rgba(37, 99, 235, 0.15);
+}
+.search-chip .material-symbols-outlined { font-size: 16px; }
+.search-chip-label { font-weight: 500; }
+.search-chip-value {
+  color: var(--aether-ink-4);
+  font-weight: 400;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.search-chip.active .search-chip-value {
+  color: var(--primary-500);
+  opacity: 0.85;
+}
+.search-chip-caret {
+  transition: transform 200ms var(--aether-ease);
+  opacity: 0.6;
+}
+.search-chip.active .search-chip-caret {
+  transform: rotate(180deg);
+}
+
+/* ── Popovers — small frosted menus anchored under the chip */
+.popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  z-index: 60;
+  min-width: 200px;
+  padding: 6px;
+  border-radius: 16px;
+  background: var(--glass-bg-strong);
+  backdrop-filter: var(--glass-blur-lg);
+  -webkit-backdrop-filter: var(--glass-blur-lg);
+  border: var(--glass-border);
+  box-shadow: var(--soft-3);
+  display: flex;
+  flex-direction: column;
+  animation: popoverIn 220ms var(--aether-ease);
+}
+.popover-left { left: 0; }
+.popover-right { right: 0; }
+.popover-llm { width: 280px; max-height: 70vh; overflow-y: auto; }
+
+@keyframes popoverIn {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.popover-head {
+  padding: 10px 12px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--aether-ink-4);
+}
+
+.popover-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.popover-head-row > span:first-child {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--aether-ink-4);
+}
+
+.popover-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: transparent;
+  border: 1px solid var(--aether-line-strong);
+  color: var(--aether-ink-3);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 200ms var(--aether-ease), color 200ms var(--aether-ease);
+}
+.popover-refresh:hover:not(:disabled) {
+  background: rgba(10, 14, 26, 0.04);
+  color: var(--aether-ink);
+}
+.popover-refresh:disabled { opacity: 0.5; cursor: not-allowed; }
+.popover-refresh .material-symbols-outlined { font-size: 14px; }
+.popover-refresh .spinning { animation: aetherSpin 0.9s linear infinite; }
+
+.popover-section-eyebrow {
+  padding: 6px 12px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--aether-ink-4);
+}
+
+.popover-divider {
+  height: 1px;
+  background: var(--aether-line);
+  margin: 6px 8px;
+}
+
+.popover-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: transparent;
+  border: none;
+  color: var(--aether-ink-2);
+  font-family: inherit;
+  font-size: 13.5px;
+  letter-spacing: -0.005em;
+  text-align: left;
+  cursor: pointer;
+  transition: background 180ms var(--aether-ease), color 180ms var(--aether-ease);
+}
+.popover-item:hover { background: rgba(10, 14, 26, 0.05); color: var(--aether-ink); }
+.popover-item.selected {
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--primary-700);
+  font-weight: 500;
+}
+.popover-item .material-symbols-outlined {
+  font-size: 16px;
+  color: var(--primary-500);
+}
+
+.popover-empty,
+.popover-error,
+.popover-loading {
+  padding: 12px;
+  font-size: 12.5px;
+  color: var(--aether-ink-3);
+  line-height: 1.5;
+}
+.popover-error { color: var(--fg-danger); }
+.popover-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── AI submit button inside the bar ────────────────────── */
+.search-submit {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 22px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(180deg,
+    var(--primary-400) 0%,
+    var(--primary-500) 55%,
+    var(--primary-600) 100%);
+  color: #fff;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.4) inset,
+    0 1px 2px rgba(37, 99, 235, 0.3),
+    0 12px 28px -10px rgba(37, 99, 235, 0.55);
+  transition:
+    background 220ms var(--aether-ease),
+    box-shadow 220ms var(--aether-ease),
+    transform 220ms var(--aether-ease);
+}
+
+.search-submit .material-symbols-outlined { font-size: 18px; }
+
+.search-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.4) inset,
+    0 2px 4px rgba(37, 99, 235, 0.32),
+    0 18px 36px -12px rgba(37, 99, 235, 0.6);
+}
+.search-submit:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+  transition-duration: 120ms;
+}
+.search-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ── Hint & error rows below the bar ────────────────────── */
+.search-hint {
+  text-align: center;
+  font-size: 12px;
+  color: var(--aether-ink-4);
+  letter-spacing: 0;
+}
+.search-hint kbd {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--aether-line);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--aether-ink-2);
+  margin: 0 2px;
+}
+
+.search-status {
+  text-align: center;
+}
+
+.alert {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border-radius: 14px;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+}
+.alert .material-symbols-outlined { font-size: 20px; flex-shrink: 0; }
+.alert-error {
+  background: var(--bg-danger);
+  color: var(--fg-danger);
+  border: 1px solid var(--border-danger);
+}
+.alert-warning {
+  background: var(--bg-warning);
+  color: var(--fg-warning);
+  border: 1px solid var(--border-warning);
+}
+.search-error { animation: aetherFadeUp 400ms var(--aether-ease) both; }
+.search-error-msg {
+  margin: 0;
+  font-weight: 500;
+}
+.search-error-hint {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--fg-warning);
+  font-weight: 400;
+}
+
+.search-cancel-row {
+  display: flex;
+  justify-content: center;
+}
+
+/* ── Responsive collapse of the bar — README spec ───────── */
+@media (max-width: 880px) {
+  .search-chip-value { display: none; }
+}
+@media (max-width: 640px) {
+  .search-bar { padding: 12px 12px 12px 18px; gap: 10px; }
+  .search-chip-label { display: none; }
+  .search-submit { padding: 0 0; width: 44px; justify-content: center; }
+  .search-submit-label { display: none; }
 }
 </style>
