@@ -132,6 +132,33 @@ class Configuration(BaseModel):
             "'deep' feel without blowing up token budgets."
         ),
     )
+    enable_arxiv: bool = Field(
+        default=True,
+        title="Enable arXiv Source",
+        description=(
+            "Query arXiv's open Atom API alongside web search. No key needed. "
+            "Strongly recommended for CS / physics / math / quantitative "
+            "biology topics — surfaces peer-reviewed and preprint papers that "
+            "rarely rank on DDG."
+        ),
+    )
+    enable_openalex: bool = Field(
+        default=True,
+        title="Enable OpenAlex Source",
+        description=(
+            "Query OpenAlex (~250M scholarly works, all disciplines) alongside "
+            "web search. No key needed; set OPENALEX_EMAIL to enter the polite "
+            "pool for higher rate limits."
+        ),
+    )
+    openalex_email: Optional[str] = Field(
+        default=None,
+        title="OpenAlex Polite-Pool Email",
+        description=(
+            "Optional contact email passed to OpenAlex via mailto= and to "
+            "arXiv via User-Agent. Pushes both APIs into their polite pools."
+        ),
+    )
     use_open_source_mode: bool = Field(
         default=False,
         title="Use Open-Source Model Mode",
@@ -298,6 +325,9 @@ class Configuration(BaseModel):
             "vector_chunk_overlap": os.getenv("VECTOR_CHUNK_OVERLAP"),
             "vector_top_k": os.getenv("VECTOR_TOP_K"),
             "search_results_per_task": os.getenv("SEARCH_RESULTS_PER_TASK"),
+            "enable_arxiv": os.getenv("ENABLE_ARXIV"),
+            "enable_openalex": os.getenv("ENABLE_OPENALEX"),
+            "openalex_email": os.getenv("OPENALEX_EMAIL"),
             "use_open_source_mode": os.getenv("USE_OPEN_SOURCE_MODE"),
             "open_source_model_max_retries": os.getenv("OPEN_SOURCE_MODEL_MAX_RETRIES"),
             "no_think_mode": os.getenv("NO_THINK_MODE"),

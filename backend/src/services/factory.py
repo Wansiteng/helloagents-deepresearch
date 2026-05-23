@@ -227,4 +227,20 @@ def _build_knowledge_sources(config: Configuration) -> list[Any]:
         except Exception as exc:
             logger.warning("Obsidian 知识源初始化失败，已跳过: %s", exc)
 
+    if getattr(config, "enable_arxiv", False):
+        from core.sources.arxiv import ArxivSource
+
+        sources.append(ArxivSource(config))
+        logger.info("arXiv 学术源已启用")
+
+    if getattr(config, "enable_openalex", False):
+        from core.sources.openalex import OpenAlexSource
+
+        sources.append(OpenAlexSource(config))
+        email = (config.openalex_email or "").strip()
+        logger.info(
+            "OpenAlex 学术源已启用%s",
+            f"（polite pool: {email}）" if email else "（建议设置 OPENALEX_EMAIL）",
+        )
+
     return sources
