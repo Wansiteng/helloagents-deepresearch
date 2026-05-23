@@ -169,6 +169,55 @@ Semantic Scholar: GET https://api.semanticscholar.org/graph/v1/paper/search?quer
 - 切到 `hybrid` 时，planner 走本地，summarizer 调 Claude API 成功
 - 任一 agent 调用失败有清晰错误提示
 
+**实施状态**：已完成（commit 见 git log，关键字 "Frontier-tier"）
+
+**Env 配置示例**：
+
+`local-only`（默认）—— 与原本行为一致，所有 agent 用全局 LLM：
+```bash
+LLM_PROVIDER=ollama
+LLM_MODEL_ID=gemma3:4b
+# 不用设 QUALITY_MODE 或 FRONTIER_*
+```
+
+`hybrid` —— planner 留本地，summarizer / reporter / critic 上 OpenAI：
+```bash
+LLM_PROVIDER=ollama
+LLM_MODEL_ID=gemma3:4b
+QUALITY_MODE=hybrid
+FRONTIER_PROVIDER=openai
+FRONTIER_MODEL=gpt-4o-mini
+FRONTIER_API_KEY=sk-...
+```
+
+`frontier-only` —— 全部上 DeepSeek（举例）：
+```bash
+QUALITY_MODE=frontier-only
+FRONTIER_PROVIDER=deepseek
+FRONTIER_MODEL=deepseek-chat
+FRONTIER_API_KEY=sk-...
+```
+
+精细的**单 agent 覆盖**（最高优先级，可与任意 quality_mode 叠加）：
+```bash
+QUALITY_MODE=local-only
+# 但 reporter 单独走 Qwen API：
+REPORTER_LLM_PROVIDER=qwen
+REPORTER_LLM_MODEL=qwen3-235b-a22b
+FRONTIER_PROVIDER=qwen           # 单 agent 覆盖也读 frontier_api_key
+FRONTIER_API_KEY=sk-...
+```
+
+每次研究启动时，后端日志会打印每个 agent 实际用的 (provider, model)，便于核对。
+
+**典型搭配建议**：
+
+| 用户场景 | 推荐配置 |
+|---|---|
+| 完全本地、Qwen 30B+ 可用 | `LLM_PROVIDER=ollama LLM_MODEL_ID=qwen3:32b QUALITY_MODE=local-only` |
+| 本地 + 远程 hybrid | planner 本地 4B/8B，summarizer/reporter 用 OpenAI / DeepSeek / Qwen 云 |
+| 想最高质量 | `QUALITY_MODE=frontier-only` + 任意 frontier API |
+
 ---
 
 ## 4. Tier 2 — 让产出能进 thesis
@@ -400,9 +449,9 @@ Semantic Scholar: GET https://api.semanticscholar.org/graph/v1/paper/search?quer
 
 | # | 状态 | 备注 |
 |---|---|---|
-| 1 学术源 | 🚧 in progress | arXiv + OpenAlex 第一版 |
+| 1 学术源 | ✅ done | arXiv + OpenAlex 第一版上线；live OpenAlex 验证 OK |
 | 2 PDF 解析 | ⬜ planned | |
-| 3 Frontier 模型路径 | ⬜ planned | |
+| 3 Frontier 模型路径 | ✅ done | 见 §3 #3 末尾的 env 配置示例 |
 | 4 任务间共享 | ⬜ planned | |
 | 5 Inline 引用 | ⬜ planned | |
 | 6 Claim verification | ⬜ planned | |

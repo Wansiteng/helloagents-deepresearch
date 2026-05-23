@@ -1,6 +1,6 @@
 import os
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -159,6 +159,69 @@ class Configuration(BaseModel):
             "arXiv via User-Agent. Pushes both APIs into their polite pools."
         ),
     )
+
+    # ── Quality mode & per-agent LLM routing ─────────────────────────────────
+    # The legacy llm_* fields above describe ONE global LLM. They still serve
+    # as the fallback for every agent. On top of that we add a coarse-grained
+    # "quality_mode" preset plus optional per-agent overrides so each agent
+    # (planner / summarizer / reporter / critic) can run on a different model.
+    #
+    # Resolution precedence per agent role:
+    #   1. <role>_llm_provider / <role>_llm_model env vars (most specific)
+    #   2. quality_mode preset:
+    #        local-only    → all roles use global llm_*
+    #        hybrid        → planner uses global, others use frontier_*
+    #        frontier-only → all roles use frontier_*
+    #   3. global llm_* (fallback)
+    quality_mode: Literal["local-only", "hybrid", "frontier-only"] = Field(
+        default="local-only",
+        title="Quality Mode",
+        description=(
+            "Coarse-grained agent routing preset. 'local-only' keeps every "
+            "agent on the global LLM (typically Ollama). 'hybrid' runs the "
+            "planner locally but pushes the heavier summarizer + reporter to "
+            "the frontier API defined by frontier_* fields. 'frontier-only' "
+            "runs every agent on the frontier API. Per-agent overrides "
+            "(see <role>_llm_provider) take precedence over this preset."
+        ),
+    )
+
+    frontier_provider: Optional[str] = Field(
+        default=None,
+        title="Frontier Provider",
+        description=(
+            "LLM provider used when quality_mode promotes an agent to the "
+            "frontier path. Must be one of HelloAgentsLLM's supported "
+            "providers: openai, deepseek, qwen, modelscope, kimi, zhipu, "
+            "ollama, vllm, custom. Pair with frontier_model + frontier_api_key."
+        ),
+    )
+    frontier_model: Optional[str] = Field(
+        default=None,
+        title="Frontier Model",
+        description="Model id for the frontier provider (e.g., gpt-4o, deepseek-chat, qwen-plus).",
+    )
+    frontier_api_key: Optional[str] = Field(
+        default=None,
+        title="Frontier API Key",
+        description="API key for the frontier provider. Read from FRONTIER_API_KEY env.",
+    )
+    frontier_base_url: Optional[str] = Field(
+        default=None,
+        title="Frontier Base URL",
+        description="Optional base-URL override for the frontier provider (custom endpoints / proxies).",
+    )
+
+    # Per-agent overrides — set just the ones you want to deviate from the
+    # quality_mode preset. Leaving them None means "follow the preset".
+    planner_llm_provider: Optional[str] = Field(default=None)
+    planner_llm_model: Optional[str] = Field(default=None)
+    summarizer_llm_provider: Optional[str] = Field(default=None)
+    summarizer_llm_model: Optional[str] = Field(default=None)
+    reporter_llm_provider: Optional[str] = Field(default=None)
+    reporter_llm_model: Optional[str] = Field(default=None)
+    critic_llm_provider: Optional[str] = Field(default=None)
+    critic_llm_model: Optional[str] = Field(default=None)
     use_open_source_mode: bool = Field(
         default=False,
         title="Use Open-Source Model Mode",
@@ -328,6 +391,19 @@ class Configuration(BaseModel):
             "enable_arxiv": os.getenv("ENABLE_ARXIV"),
             "enable_openalex": os.getenv("ENABLE_OPENALEX"),
             "openalex_email": os.getenv("OPENALEX_EMAIL"),
+            "quality_mode": os.getenv("QUALITY_MODE"),
+            "frontier_provider": os.getenv("FRONTIER_PROVIDER"),
+            "frontier_model": os.getenv("FRONTIER_MODEL"),
+            "frontier_api_key": os.getenv("FRONTIER_API_KEY"),
+            "frontier_base_url": os.getenv("FRONTIER_BASE_URL"),
+            "planner_llm_provider": os.getenv("PLANNER_LLM_PROVIDER"),
+            "planner_llm_model": os.getenv("PLANNER_LLM_MODEL"),
+            "summarizer_llm_provider": os.getenv("SUMMARIZER_LLM_PROVIDER"),
+            "summarizer_llm_model": os.getenv("SUMMARIZER_LLM_MODEL"),
+            "reporter_llm_provider": os.getenv("REPORTER_LLM_PROVIDER"),
+            "reporter_llm_model": os.getenv("REPORTER_LLM_MODEL"),
+            "critic_llm_provider": os.getenv("CRITIC_LLM_PROVIDER"),
+            "critic_llm_model": os.getenv("CRITIC_LLM_MODEL"),
             "use_open_source_mode": os.getenv("USE_OPEN_SOURCE_MODE"),
             "open_source_model_max_retries": os.getenv("OPEN_SOURCE_MODEL_MAX_RETRIES"),
             "no_think_mode": os.getenv("NO_THINK_MODE"),
