@@ -128,7 +128,8 @@
   /* Decelerated easing — no overshoot */
   --aether-ease:      cubic-bezier(0.22, 1, 0.36, 1);
   --aether-ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
-  --halo-ease:        cubic-bezier(0.16, 1, 0.3, 1); /* fast start, long decelerating tail */
+  --halo-ease:        cubic-bezier(0.16, 1, 0.3, 1); /* bloom inbound: fast start, long decelerating tail */
+  --halo-ease-out:    cubic-bezier(0.7, 0, 0.84, 0); /* bloom outbound: mirror of --halo-ease — glow lingers, drops at the end */
 
   /* ─────────────────────────────────────────────
      SEMANTIC TOKENS (kept for component back-compat —
@@ -515,7 +516,15 @@ code, pre, .mono {
   border-radius: var(--radius-pill);
   isolation: isolate;
 }
-/* Inner bloom — closer-in, faster diffusion */
+/* Inner bloom — closer-in, faster diffusion.
+   Transitions live in two places:
+   - The base rule below uses `--halo-ease-out` (slow start, fast end). The
+     browser falls back to it when the element LEAVES the hover/.active state,
+     so the glow lingers before dropping — perceptually mirrors the inbound.
+   - The `:hover` / `.active` rule (below) re-declares `transition` with the
+     inbound `--halo-ease` (fast start, long settle) so entering still feels
+     like a real bloom. Same total duration in both directions; the curves
+     are mirrored so the time the halo *looks* visible is symmetric. */
 .ai-halo::before {
   content: "";
   position: absolute;
@@ -528,8 +537,8 @@ code, pre, .mono {
   transform: scale(0.55);
   transform-origin: center;
   transition:
-    opacity 700ms var(--halo-ease),
-    transform 900ms var(--halo-ease);
+    opacity 700ms var(--halo-ease-out),
+    transform 900ms var(--halo-ease-out);
 }
 /* Outer bloom — slower, wider, slightly delayed for a true diffusion feel */
 .ai-halo::after {
@@ -544,13 +553,25 @@ code, pre, .mono {
   transform: scale(0.5);
   transform-origin: center;
   transition:
+    opacity 1100ms var(--halo-ease-out) 80ms,
+    transform 1400ms var(--halo-ease-out) 80ms;
+}
+.ai-halo:hover::before,
+.ai-halo.active::before {
+  opacity: 0.85;
+  transform: scale(1);
+  transition:
+    opacity 700ms var(--halo-ease),
+    transform 900ms var(--halo-ease);
+}
+.ai-halo:hover::after,
+.ai-halo.active::after {
+  opacity: 0.55;
+  transform: scale(1);
+  transition:
     opacity 1100ms var(--halo-ease) 80ms,
     transform 1400ms var(--halo-ease) 80ms;
 }
-.ai-halo:hover::before,
-.ai-halo.active::before { opacity: 0.85; transform: scale(1); }
-.ai-halo:hover::after,
-.ai-halo.active::after  { opacity: 0.55; transform: scale(1); }
 
 .ai-halo:hover::before,
 .ai-halo:hover::after,
