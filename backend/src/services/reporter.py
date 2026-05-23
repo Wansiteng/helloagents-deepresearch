@@ -27,6 +27,7 @@ from hello_agents import ToolAwareSimpleAgent
 from config import Configuration
 from models import SummaryState
 from prompts import REPORT_SECTIONS, get_current_date, report_section_writer_instructions
+from services.citation import collect_used_ids, format_bibliography
 from services.text_processing import collapse_repetition, strip_tool_calls
 from utils import strip_thinking_tokens
 
@@ -98,11 +99,39 @@ class WriterAgent:
                 self._vector_store.count(),
                 self._config.vector_top_k,
             )
-            return self._generate_report_section_by_section(state)
+            report = self._generate_report_section_by_section(state)
+        else:
+            # ── 回退：传统全量提示策略 ───────────────────────────────
+            logger.info(
+                "WriterAgent: 使用传统全量提示策略（vector_store 未启用或为空）"
+            )
+            report = self._generate_report_fullcontext(state)
 
-        # ── 回退：传统全量提示策略 ───────────────────────────────────
-        logger.info("WriterAgent: 使用传统全量提示策略（vector_store 未启用或为空）")
-        return self._generate_report_fullcontext(state)
+        return self._attach_bibliography(report, state)
+
+    def _attach_bibliography(self, report_text: str, state: SummaryState) -> str:
+        """Append a 参考文献 section listing every chunk the report cites.
+
+        ``state.all_chunks`` carries the run-scoped chunks with their ``cite_id``;
+        we only render the ones whose ``[^N]`` marker actually appears in the
+        report body so the bibliography stays focused.
+        """
+        if not getattr(state, "all_chunks", None):
+            return report_text
+        used = collect_used_ids(report_text)
+        if not used:
+            # Reporter forgot to cite anyone — log so we can detect prompt drift,
+            # but still let the report through.
+            logger.warning(
+                "WriterAgent: 报告未出现任何 [^N] 引用标记，跳过参考文献段。"
+            )
+            return report_text
+        biblio = format_bibliography(state.all_chunks, only_used=used, style="IEEE")
+        if not biblio:
+            return report_text
+        # Defensive: drop any trailing whitespace, ensure the section starts on
+        # a fresh paragraph.
+        return report_text.rstrip() + "\n\n" + biblio
 
     # ------------------------------------------------------------------
     # 分章节生成（动态 Top-K 召回）

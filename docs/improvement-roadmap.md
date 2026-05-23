@@ -453,7 +453,7 @@ FRONTIER_API_KEY=sk-...
 | 2 PDF 解析 | ⬜ planned | |
 | 3 Frontier 模型路径 | ✅ done | 见 §3 #3 末尾的 env 配置示例 |
 | 4 任务间共享 | ⬜ planned | |
-| 5 Inline 引用 | ⬜ planned | |
+| 5 Inline 引用 | ✅ done | marked-footnote + IEEE 参考文献 |
 | 6 Claim verification | ⬜ planned | |
 | 7 二轮深挖 | ⬜ planned | |
 | 8 Source 质量加权 | ⬜ planned | |

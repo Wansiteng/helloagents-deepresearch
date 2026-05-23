@@ -593,6 +593,9 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { marked } from "marked";
+// Renders `[^N]` inline citations + auto-anchors the "[^N]: …" footnote
+// definitions emitted by the backend ReporterAgent's bibliography pass.
+import markedFootnote from "marked-footnote";
 import HistoryModal from "./components/HistoryModal.vue";
 
 interface TocItem {
@@ -850,6 +853,7 @@ const currentTaskSummary = computed(() => currentTask.value?.summary ?? "");
 // ── Markdown rendering ─────────────────────────────────────────────────
 // marked is configured for GFM (tables, strikethrough) + line-break = enter.
 marked.setOptions({ gfm: true, breaks: true });
+marked.use(markedFootnote({ description: "参考文献" }));
 
 function renderMarkdown(src: string): string {
   if (!src) return "";
@@ -885,12 +889,21 @@ function injectHeadingIdsAndCollectToc(html: string): { html: string; toc: TocIt
   const counts = new Map<string, number>();
   const next = html.replace(/<h([1-3])([^>]*)>([\s\S]*?)<\/h\1>/g, (_m, lvl, attrs, inner) => {
     const text = String(inner).replace(/<[^>]+>/g, "").trim();
+    // Skip the auto-injected footnote-section label (marked-footnote emits
+    // <h2 id="footnote-label" class="sr-only">参考文献</h2>) — it's a screen-
+    // reader anchor, not a real outline entry.
+    const isFootnoteLabel =
+      /\bid=["']footnote-label["']/i.test(attrs) ||
+      /\bclass=["'][^"']*\bsr-only\b/i.test(attrs);
+
     let slug = slugify(text);
     if (!slug) slug = `h-${toc.length + 1}`;
     const c = counts.get(slug) ?? 0;
     counts.set(slug, c + 1);
     const id = c === 0 ? slug : `${slug}-${c}`;
-    toc.push({ id, level: Number(lvl), text });
+    if (!isFootnoteLabel) {
+      toc.push({ id, level: Number(lvl), text });
+    }
     return `<h${lvl}${attrs} id="${id}">${inner}</h${lvl}>`;
   });
   return { html: next, toc };
@@ -3433,6 +3446,83 @@ select:focus {
   max-width: 100%;
   height: auto;
   border-radius: 12px;
+}
+
+/* ── Footnotes (marked-footnote extension) ────────────────── */
+.markdown-body section.footnotes,
+.markdown-body section[data-footnotes] {
+  margin-top: 2em;
+  padding-top: 1.4em;
+  border-top: 1px solid var(--aether-line);
+}
+
+/* marked-footnote ships <h2 class="sr-only" id="footnote-label">参考文献</h2>;
+   un-hide it (the extension assumes a Tailwind .sr-only rule that we don't
+   ship) and style it like a normal H2 — gives the section a real heading. */
+.markdown-body section.footnotes h2.sr-only,
+.markdown-body section[data-footnotes] h2.sr-only,
+.markdown-body h2#footnote-label {
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  margin: 0 0 0.8em !important;
+  clip: auto !important;
+  overflow: visible !important;
+  white-space: normal !important;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--aether-ink);
+}
+
+.markdown-body section.footnotes ol,
+.markdown-body section[data-footnotes] ol {
+  padding-left: 1.4em;
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--aether-ink-2);
+  counter-reset: footnote;
+}
+
+.markdown-body section.footnotes ol li,
+.markdown-body section[data-footnotes] ol li {
+  margin: 0.45em 0;
+  line-height: 1.6;
+}
+
+/* Marker styling: in-text superscript and the back-ref arrow at the end of
+   each footnote definition. */
+.markdown-body sup a,
+.markdown-body a[data-footnote-ref] {
+  display: inline-block;
+  padding: 0 4px;
+  margin: 0 2px;
+  border-radius: 6px;
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--primary-600);
+  font-size: 0.75em;
+  font-weight: 500;
+  text-decoration: none;
+  border-bottom: none !important;
+  vertical-align: super;
+  transition: background var(--dur-short) var(--aether-ease);
+}
+
+.markdown-body sup a:hover,
+.markdown-body a[data-footnote-ref]:hover {
+  background: rgba(37, 99, 235, 0.16);
+}
+
+.markdown-body a[data-footnote-backref] {
+  color: var(--aether-ink-4);
+  text-decoration: none;
+  margin-left: 0.4em;
+  border-bottom: none !important;
+  font-size: 0.9em;
+}
+
+.markdown-body a[data-footnote-backref]:hover {
+  color: var(--primary-600);
 }
 
 /* ── Responsive ───────────────────────────────────────── */

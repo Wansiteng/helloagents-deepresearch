@@ -3,7 +3,7 @@
 import operator
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from typing_extensions import Annotated
 
@@ -100,6 +100,11 @@ class SummaryState:
     structured_report: Optional[str] = field(default=None)
     report_note_id: Optional[str] = field(default=None)
     report_note_path: Optional[str] = field(default=None)
+    # All KnowledgeChunks gathered across every task in this run, each carrying
+    # a stable ``cite_id`` so the reporter can emit a final 参考文献 section
+    # that resolves every ``[^N]`` marker in the report body.
+    # Stored as ``list[Any]`` to avoid circular import with core.knowledge.
+    all_chunks: list[Any] = field(default_factory=list)
 
 
 @dataclass(kw_only=True)

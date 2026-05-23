@@ -36,6 +36,10 @@ class KnowledgeChunk:
     metadata: dict[str, Any] = field(default_factory=dict)
     score: float | None = None
     """Relevance score; higher is more relevant. ``None`` when unranked."""
+    cite_id: str | None = None
+    """Stable per-research citation handle, e.g. ``"1"`` matches ``[^1]``
+    markers in the summary / report. Assigned by ``services.citation`` once
+    the chunk is admitted into the run."""
 
 
 @runtime_checkable
@@ -81,12 +85,18 @@ def build_context(chunks: list[KnowledgeChunk]) -> tuple[str, str]:
     context_blocks: list[str] = []
     for index, chunk in enumerate(chunks, start=1):
         title = chunk.title or chunk.url_or_path or f"来源 {index}"
-        summary_lines.append(f"* [{chunk.source}] {title} : {chunk.url_or_path}")
+        cite = chunk.cite_id or str(index)
+        summary_lines.append(
+            f"* [^{cite}] [{chunk.source}] {title} : {chunk.url_or_path}"
+        )
 
         content = chunk.content or ""
         if len(content) > _CHUNK_CONTENT_LIMIT:
             content = f"{content[:_CHUNK_CONTENT_LIMIT]}... [截断]"
+        # CITE_ID line makes the citation handle the very first thing the
+        # summarizer / writer reads — they must reuse it verbatim as [^N].
         context_blocks.append(
+            f"CITE_ID: [^{cite}]\n"
             f"信息来源: {title}（{chunk.source}）\n"
             f"路径/URL: {chunk.url_or_path}\n"
             f"信息内容: {content}\n"

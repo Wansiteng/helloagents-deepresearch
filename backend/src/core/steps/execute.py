@@ -16,6 +16,7 @@ from typing import Any, AsyncIterator
 
 from core.knowledge import KnowledgeChunk, KnowledgeQuery, build_context
 from models import SummaryState, TodoItem
+from services.citation import assign_cite_ids
 from services.factory import ResearchServices
 
 logger = logging.getLogger(__name__)
@@ -91,6 +92,13 @@ class ExecuteStep:
                     "step": step,
                 }
                 return
+
+            # Assign run-scoped cite_ids so the summarizer / reporter can attach
+            # [^N] markers to each claim it derives from a chunk. ``state.all_chunks``
+            # is the single source of truth that the reporter's bibliography step
+            # iterates over later.
+            assign_cite_ids(chunks, existing=state.all_chunks)
+            state.all_chunks.extend(chunks)
 
             sources_summary, context = build_context(chunks)
             task.sources_summary = sources_summary
